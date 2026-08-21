@@ -9,6 +9,16 @@
     "other": 90
   },
 
+  "// pmcLevelScaling": "Only applies when a PMC killed you AND their level is known. Higher-level PMCs are pickier (take less -> higher return) but extract more reliably; low-level PMCs grab everything but often die with it.",
+  "pmcLevelScaling": {
+    "enabled": true,
+    "pivotLevel": 25,
+    "returnChancePerLevel": 0.6,
+    "extractChancePerLevel": 1.0,
+    "maxReturnAdjustPercent": 20,
+    "maxExtractAdjustPercent": 30
+  },
+
   "// looterExtractedChancePercent": "Chance the killer survived and extracted with your gear. Rolled ONCE per raid, not per item.",
   "looterExtractedChancePercent": 65,
 

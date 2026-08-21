@@ -27,6 +27,7 @@ namespace RealisticInsurance.Patches
         [ThreadStatic] private static KillerType? _currentKillerType;
         [ThreadStatic] private static bool _currentLooterExtracted;
         [ThreadStatic] private static bool _currentPackageIsLegacy;
+        [ThreadStatic] private static int? _currentKillerLevel;
 
         public ReturnChancePatch(RandomUtil randomUtil, ISptLogger<ReturnChancePatch> logger)
         {
@@ -45,6 +46,7 @@ namespace RealisticInsurance.Patches
             _currentKillerType = null;
             _currentLooterExtracted = false;
             _currentPackageIsLegacy = true;
+            _currentKillerLevel = null;
 
             var ext = insured.ExtensionData;
             if (ext is null) return;
@@ -54,6 +56,17 @@ namespace RealisticInsurance.Patches
             {
                 _currentKillerType = parsed;
                 _currentPackageIsLegacy = false;
+            }
+
+            if (ext.TryGetValue(KillerContext.ExtKeyLevel, out var rawLevel))
+            {
+                _currentKillerLevel = rawLevel switch
+                {
+                    int i => i,
+                    long l => (int)l,
+                    System.Text.Json.JsonElement je when je.TryGetInt32(out var v) => v,
+                    _ => int.TryParse(rawLevel?.ToString(), out var v2) ? v2 : null
+                };
             }
 
             if (ext.TryGetValue(KillerContext.ExtKeyExtracted, out var rawExtracted))
@@ -96,6 +109,13 @@ namespace RealisticInsurance.Patches
                 _ => config.BaseReturnChancePercent.Other
             };
 
+            // Killer level: a higher-level PMC is pickier and takes less, so more of
+            // your kit survives. Only applies when the level is actually known.
+            if (_currentKillerLevel.HasValue && config.PmcLevelScaling.Enabled)
+            {
+                chance += config.PmcLevelScaling.ReturnAdjustFor(_currentKillerLevel.Value);
+            }
+
             // Second factor: if the looter never made it out, the gear is more likely
             // to be recoverable.
             if (!_currentLooterExtracted)
@@ -116,7 +136,7 @@ namespace RealisticInsurance.Patches
 
             if (config.LogRolls)
             {
-                _logger.Info($"[RealisticInsurance] {killerType} / extracted={_currentLooterExtracted} -> return {chance}% | roll {roll} -> {(shouldDelete ? "LOST" : "returned")}");
+                _logger.Info($"[RealisticInsurance] {killerType} lvl={(_currentKillerLevel?.ToString() ?? "?")} / extracted={_currentLooterExtracted} -> return {chance:0.#}% | roll {roll} -> {(shouldDelete ? "LOST" : "returned")}");
             }
 
             __result = shouldDelete;

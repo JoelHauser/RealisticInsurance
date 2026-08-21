@@ -26,6 +26,31 @@ followers into their own bucket.
 escaped with your kit or didn't — rolling per item would let one corpse both
 escape and not escape.
 
+### Killer level (PMCs only)
+
+A high-level PMC is pickier — takes less of your kit, but is far more likely to
+walk out with what they did take. A low-level PMC grabs everything and then
+frequently dies with it. Level therefore moves the two factors in **opposite**
+directions:
+
+```
+returnChance  += (level - pivot) * returnChancePerLevel    (clamped)
+extractChance += (level - pivot) * extractChancePerLevel   (clamped)
+```
+
+With the shipped defaults (base 55, pivot 25, +25 when the looter dies):
+
+| Killer level | Extract chance | Return % if they extracted | Return % if they died |
+|---|---|---|---|
+| 5  | 45% | 43% | 68% |
+| 25 | 65% | 55% | 80% |
+| 45 | 85% | 67% | 92% |
+
+**Level is only available for PMC killers.** SPT caches `pmcUSEC`/`pmcBEAR`
+bots (and only those) in `MatchBotDetailsCacheService`; the post-raid Aggressor
+block carries no level at all. Scav and boss kills use their flat buckets with
+no level scaling, and a cache miss simply means no adjustment.
+
 **Every insured item is rolled individually**, including things that were never
 equipped. `RollForDelete` is reached from both the regular-item path and the
 attachment path, so replacing it covers all insured gear.

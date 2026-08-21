@@ -1,54 +1,61 @@
+using System.Collections.Concurrent;
 using System.Reflection;
+using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
+using SPTarkov.Server.Core.Models.Eft.Match;
 using SPTarkov.Server.Core.Servers;
+using SPTarkov.Server.Core.Services.Bot;
+using SPTarkov.Server.Core.Services.InRaid;
 using SPTarkov.Server.Core.Utils;
-using SPTarkov.Common.Models.Logging;
 
 namespace RealisticInsurance.Patches
 {
     /// <summary>
-    /// Insurance packages are created at raid end but processed on a timer
-    /// (insurance.json runIntervalSeconds, default 600s) potentially hours later and
-    /// across a server restart. The package model carries no killer information, so we
-    /// capture it here and stamp it onto the package's [JsonExtensionData], which
-    /// persists in profile.json for free.
+    /// Reads the killer at raid end and rolls whether they extracted.
     ///
-    /// The "did the looter extract" roll happens ONCE here rather than per item: the
-    /// killer either got out with your gear or didn't, and rolling it per item would
-    /// let one corpse both escape and not escape.
+    /// This targets HandlePostRaidPmc rather than the insurance call itself for two
+    /// ordering reasons, both verified against 4.1.3:
+    ///
+    ///   1. HandlePostRaidPmc clears MatchBotDetailsCacheService at the END of the
+    ///      method, but the insurance packages are created part-way through it. A
+    ///      prefix here still sees a populated bot cache - which is the only place the
+    ///      killer's LEVEL exists, since the Aggressor block carries no level.
+    ///   2. Aggressor.ProfileId is not assigned until AFTER insurance is handled, so
+    ///      the reliable killer id at this point is request.Results.KillerId.
+    ///
+    /// Only pmcUSEC / pmcBEAR are cached by SPT, so levels resolve for PMC killers
+    /// only. Scav and boss kills fall back to their flat config buckets.
     /// </summary>
     [Injectable(InjectionType.Transient, int.MaxValue)]
     public class CaptureKillerPatch : AbstractPatch
     {
-        private static SaveServer _saveServer = null!;
+        private static MatchBotDetailsCacheService _botCache = null!;
         private static RandomUtil _randomUtil = null!;
         private static ISptLogger<CaptureKillerPatch> _logger = null!;
 
-        public CaptureKillerPatch(SaveServer saveServer, RandomUtil randomUtil, ISptLogger<CaptureKillerPatch> logger)
+        internal static readonly ConcurrentDictionary<string, KillerContext> Pending = new();
+
+        public CaptureKillerPatch(
+            MatchBotDetailsCacheService botCache,
+            RandomUtil randomUtil,
+            ISptLogger<CaptureKillerPatch> logger)
         {
-            _saveServer = saveServer;
+            _botCache = botCache;
             _randomUtil = randomUtil;
             _logger = logger;
         }
 
         protected override MethodBase? GetTargetMethod()
         {
-            return typeof(SPTarkov.Server.Core.Services.Commerce.InsuranceService)
-                .GetMethod("StartPostRaidInsuranceLostProcess", BindingFlags.Instance | BindingFlags.Public);
+            return typeof(LocationLifecycleService)
+                .GetMethod("HandlePostRaidPmc", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
-        /// <summary>Record how many packages already existed so the postfix only stamps new ones.</summary>
         [PatchPrefix]
-        public static void Prefix(MongoId sessionID, out int __state)
-        {
-            __state = _saveServer.GetProfile(sessionID)?.InsuranceList?.Count ?? 0;
-        }
-
-        [PatchPostfix]
-        public static void Postfix(PmcData pmcData, MongoId sessionID, int __state)
+        public static void Prefix(MongoId sessionId, bool isDead, EndLocalRaidRequestData request)
         {
             var config = RealisticInsuranceMod.Config;
             if (config is null || !config.Enabled)
@@ -56,26 +63,96 @@ namespace RealisticInsurance.Patches
                 return;
             }
 
-            var list = _saveServer.GetProfile(sessionID)?.InsuranceList;
-            if (list is null || list.Count <= __state)
+            var profile = request?.Results?.Profile;
+            var killerType = isDead ? KillerContext.Classify(profile) : KillerType.Other;
+
+            int? killerLevel = null;
+            if (isDead && killerType == KillerType.Pmc)
+            {
+                // Only PMCs are in SPT's cache; a miss here is normal, not an error.
+                killerLevel = _botCache.GetBotById(request?.Results?.KillerId)?.Level;
+            }
+
+            var extractChance = config.LooterExtractedChancePercent;
+            if (killerLevel.HasValue && config.PmcLevelScaling.Enabled)
+            {
+                extractChance += config.PmcLevelScaling.ExtractAdjustFor(killerLevel.Value);
+            }
+
+            extractChance = Math.Clamp(extractChance, 0d, 100d);
+
+            var ctx = new KillerContext
+            {
+                Type = killerType,
+                KillerLevel = killerLevel,
+                LooterExtracted = _randomUtil.GetChance100(extractChance)
+            };
+
+            Pending[sessionId.ToString()] = ctx;
+
+            if (config.LogRolls)
+            {
+                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stamps the captured context onto the insurance packages created during this
+    /// raid. Insurance.ExtensionData is [JsonExtensionData], so it persists in
+    /// profile.json and survives the server restart that can happen before the
+    /// return timer fires.
+    /// </summary>
+    [Injectable(InjectionType.Transient, int.MaxValue)]
+    public class StampPackagesPatch : AbstractPatch
+    {
+        private static SaveServer _saveServer = null!;
+
+        public StampPackagesPatch(SaveServer saveServer) => _saveServer = saveServer;
+
+        protected override MethodBase? GetTargetMethod()
+        {
+            return typeof(SPTarkov.Server.Core.Services.Commerce.InsuranceService)
+                .GetMethod("StartPostRaidInsuranceLostProcess", BindingFlags.Instance | BindingFlags.Public);
+        }
+
+        /// <summary>Count existing packages so the postfix only stamps this raid's.</summary>
+        [PatchPrefix]
+        public static void Prefix(MongoId sessionID, out int __state)
+        {
+            __state = _saveServer.GetProfile(sessionID)?.InsuranceList?.Count ?? 0;
+        }
+
+        [PatchPostfix]
+        public static void Postfix(MongoId sessionID, int __state)
+        {
+            var config = RealisticInsuranceMod.Config;
+            if (config is null || !config.Enabled)
             {
                 return;
             }
 
-            var killerType = KillerContext.Classify(pmcData);
-            var looterExtracted = _randomUtil.GetChance100(config.LooterExtractedChancePercent);
+            if (!CaptureKillerPatch.Pending.TryRemove(sessionID.ToString(), out var ctx))
+            {
+                return;
+            }
+
+            var list = _saveServer.GetProfile(sessionID)?.InsuranceList;
+            if (list is null)
+            {
+                return;
+            }
 
             for (var i = __state; i < list.Count; i++)
             {
                 var package = list[i];
                 package.ExtensionData ??= new Dictionary<string?, object?>();
-                package.ExtensionData[KillerContext.ExtKeyType] = killerType.ToString();
-                package.ExtensionData[KillerContext.ExtKeyExtracted] = looterExtracted;
-            }
-
-            if (config.LogRolls)
-            {
-                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, looterExtracted={looterExtracted}, packages stamped={list.Count - __state}");
+                package.ExtensionData[KillerContext.ExtKeyType] = ctx.Type.ToString();
+                package.ExtensionData[KillerContext.ExtKeyExtracted] = ctx.LooterExtracted;
+                if (ctx.KillerLevel.HasValue)
+                {
+                    package.ExtensionData[KillerContext.ExtKeyLevel] = ctx.KillerLevel.Value;
+                }
             }
         }
     }

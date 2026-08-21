@@ -13,9 +13,13 @@ namespace RealisticInsurance
         public KillerType Type { get; set; }
         public bool LooterExtracted { get; set; }
 
+        /// <summary>Killer's level, or null when unknown (scavs, bosses, cache miss).</summary>
+        public int? KillerLevel { get; set; }
+
         // Stamped into Insurance.ExtensionData so it persists in profile.json.
         public const string ExtKeyType = "riKillerType";
         public const string ExtKeyExtracted = "riLooterExtracted";
+        public const string ExtKeyLevel = "riKillerLevel";
 
         /// <summary>
         /// Classify from the post-raid aggressor. Side is the reliable signal: EFT
