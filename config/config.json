@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+
+  "// baseReturnChancePercent": "Chance an insured item is RETURNED, by what killed you.",
+  "baseReturnChancePercent": {
+    "pmc": 55,
+    "playerScav": 70,
+    "boss": 40,
+    "other": 90
+  },
+
+  "// looterExtractedChancePercent": "Chance the killer survived and extracted with your gear. Rolled ONCE per raid, not per item.",
+  "looterExtractedChancePercent": 65,
+
+  "// looterDiedBonusPercent": "Added to the base chance when the killer did NOT extract. Result is clamped to 0-100.",
+  "looterDiedBonusPercent": 25,
+
+  "// traderModifierPercent": "Optional per-trader adjustment, added after the above. Prapor / Therapist.",
+  "traderModifierPercent": {
+    "54cb50c76803fa8b248b4571": 0,
+    "54cb57776803fa99248b456e": 10
+  },
+
+  "// legacyPackageBehaviour": "What to do with insurance packages created before this mod was installed: 'spt' = use SPT's returnChancePercent, or 'other' = treat as the 'other' bucket.",
+  "legacyPackageBehaviour": "spt",
+
+  "logRolls": false
+}
