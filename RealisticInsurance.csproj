@@ -50,4 +50,26 @@
     <Copy SourceFiles="config\config.json" DestinationFolder="$(ModDir)\config" />
   </Target>
 
+  <!--
+    Drop-in archive. Root is SPT_Runtime\ so the zip extracts straight over the
+    SPT install folder (4.1 renamed SPT\ to SPT_Runtime\).
+      dotnet build -c Release -p:SPTPath="H:\SPT4.1.X" -t:PackageRelease
+  -->
+  <Target Name="PackageRelease" DependsOnTargets="Build">
+    <PropertyGroup>
+      <StagingDir>$(MSBuildProjectDirectory)\dist\staging</StagingDir>
+      <ModStageDir>$(StagingDir)\SPT_Runtime\user\mods\RealisticInsurance</ModStageDir>
+      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.1.x.zip</ZipPath>
+    </PropertyGroup>
+    <RemoveDir Directories="$(StagingDir)" />
+    <MakeDir Directories="$(ModStageDir)\config" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStageDir)" />
+    <Copy SourceFiles="config\config.json" DestinationFolder="$(ModStageDir)\config" />
+    <Copy SourceFiles="README.md" DestinationFolder="$(ModStageDir)" />
+    <Delete Files="$(ZipPath)" />
+    <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
+    <RemoveDir Directories="$(StagingDir)" />
+    <Message Importance="high" Text="Release archive: $(ZipPath)" />
+  </Target>
+
 </Project>

@@ -6,6 +6,7 @@ using SPTarkov.Server.Core.Controllers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Enums;
+using SPTarkov.Server.Core.Helpers.Items;
 using SPTarkov.Server.Core.Services.Ragfair;
 using SPTarkov.Server.Core.Utils;
 
@@ -26,15 +27,18 @@ namespace RealisticInsurance.Patches
     {
         private static RagfairPriceService _priceService = null!;
         private static RandomUtil _randomUtil = null!;
+        private static ItemHelper _itemHelper = null!;
         private static ISptLogger<PackageContextPatch> _logger = null!;
 
         public PackageContextPatch(
             RagfairPriceService priceService,
             RandomUtil randomUtil,
+            ItemHelper itemHelper,
             ISptLogger<PackageContextPatch> logger)
         {
             _priceService = priceService;
             _randomUtil = randomUtil;
+            _itemHelper = itemHelper;
             _logger = logger;
         }
 
@@ -47,7 +51,7 @@ namespace RealisticInsurance.Patches
         [PatchPrefix]
         public static void Prefix(SPTarkov.Server.Core.Models.Eft.Profile.Insurance insured)
         {
-            RaidLootPlan.Build(insured, _priceService, _randomUtil, _logger);
+            RaidLootPlan.Build(insured, _priceService, _randomUtil, _itemHelper, _logger);
         }
 
         [PatchPostfix]
@@ -88,6 +92,7 @@ namespace RealisticInsurance.Patches
             SPTarkov.Server.Core.Models.Eft.Profile.Insurance insured,
             RagfairPriceService priceService,
             RandomUtil randomUtil,
+            ItemHelper itemHelper,
             ISptLogger<PackageContextPatch> logger)
         {
             Clear();
@@ -168,6 +173,15 @@ namespace RealisticInsurance.Patches
             {
                 logger.Info(
                     $"[RealisticInsurance] package {insured.TraderId}: killer={killerType}, competence={competence:0.#}, extracted={looterExtracted} -> return {_fallbackReturnChance:0.#}%, took {_taken.Count}/{items.Count}");
+
+                // Listing what was taken vs kept is the only way to confirm the
+                // value weighting is actually biting.
+                foreach (var item in items)
+                {
+                    var price = priceService.GetDynamicItemPrice(item.Template, Money.ROUBLES) ?? 0d;
+                    var verdict = _taken.Contains(item.Id) ? "LOST " : "kept ";
+                    logger.Info($"[RealisticInsurance]   {verdict} {itemHelper.GetItemName(item.Template)} ({price:N0} RUB)");
+                }
             }
         }
 
