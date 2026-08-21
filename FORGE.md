@@ -20,15 +20,9 @@ Different killers, different odds:
 | Boss or raider | ~40% | thorough, and they aren't leaving |
 | Nobody | ~90% | bled out, fell, mine — nobody looted you |
 
-Player scavs and AI scavs get told apart properly, because they behave nothing alike.
+Player scavs and AI scavs get told apart properly, because they behave nothing alike. Every one of these numbers is yours to change.
 
-Every one of these numbers is yours to change.
-
-### How good they were
-
-Being high level doesn't make someone good at the game. So level nudges the odds here rather than deciding them.
-
-Each raid, your killer gets rolled a rough skill rating. Their level shifts what's *likely*, but a level 45 can absolutely be worse than a level 10 — and about one raid in ten ignores level completely. The level 50 hatchling runner and the level 8 prodigy both exist.
+**Then it matters how good they were.** Being high level doesn't make someone good at the game, so level nudges the odds here rather than deciding them. Each raid, your killer gets rolled a rough skill rating — their level shifts what's *likely*, but a level 45 can absolutely be worse than a level 10, and about one raid in ten ignores level completely. The level 50 hatchling runner and the level 8 prodigy both exist.
 
 That rating does two things:
 
@@ -77,14 +71,6 @@ That's Prapor unchanged, Therapist at +10%, and a custom trader at +15% on top o
 
 > **ℹ️ Bonus fix** — some trader mods offer insurance without telling SPT what their return rate should be, which crashes the insurance run in vanilla SPT. This mod handles those traders instead of letting it break, and names them in the server console at startup so you know which mod to report it to.
 
-### Other mods
-
-**Happy together** — anything that changes *what ends up insured*, like insurance fraud mods or mods that let you insure found gear. All of that happens before this mod gets involved.
-
-**Happy together** — anything that changes insurance *prices* or *timers*.
-
-**Pick one** — another mod that changes the *return chance* itself. Two mods arguing over the same decision won't end well.
-
 ### Before you install
 
 **One requirement.** `simulateItemsBeingTaken` needs to be `true` in `SPT_Runtime/SPT_Data/configs/insurance.json`. It already is by default. If you've turned it off, SPT never removes anything from insurance at all, so this mod has nothing to do — and it'll warn you in the server console if it spots that.
@@ -92,6 +78,8 @@ That's Prapor unchanged, Therapist at +10%, and a custom trader at +15% on top o
 **Server mod only.** Nothing goes into BepInEx, and there's nothing to keep in sync when the game updates.
 
 **Labs and the Labyrinth** still return nothing, exactly as always.
+
+**One conflict to know about.** Another mod that changes insurance *return chances* will fight with this one — pick whichever you prefer. Mods that change insurance prices, timers, or what ends up insured in the first place are all fine alongside it.
 
 {.endtabset}
 
