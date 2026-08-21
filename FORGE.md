@@ -79,7 +79,7 @@ That's Prapor unchanged, Therapist at +10%, and a custom trader at +15% on top o
 
 **Labs and the Labyrinth** still return nothing, exactly as always.
 
-**One conflict to know about.** Another mod that changes insurance *return chances* will fight with this one — pick whichever you prefer. Mods that change insurance prices, timers, or what ends up insured in the first place are all fine alongside it.
+**Plays nicely with the rest.** Mods that change insurance prices, timers, or what ends up insured in the first place all work fine alongside it.
 
 {.endtabset}
 
