@@ -47,9 +47,7 @@ The valuable items went and the rest was left behind, which is the behaviour the
 
 {.endtabset}
 
-## Compatibility {.tabset}
-
-### Trader mods
+## Compatibility
 
 **Custom traders require no configuration.** There is nothing to register and no entry to add anywhere. Install the trader, install this mod, and it works.
 
@@ -70,18 +68,6 @@ To give a trader some of its own character back, apply a modifier:
 Prapor unchanged, Therapist at +10%, and a custom trader at +15%, each applied on top of the result for that raid.
 
 > **Note** — some trader mods enable insurance without registering a return rate, which causes an error in SPT's own insurance run. This mod handles those traders rather than allowing the failure, and lists them in the server console at startup so the responsible mod can be identified.
-
-### Before you install
-
-**One requirement.** `simulateItemsBeingTaken` must be `true` in `SPT_Runtime/SPT_Data/configs/insurance.json`. This is the default. If it has been disabled, SPT never removes anything from insurance and this mod has no effect; a warning appears in the server console if that setting is found.
-
-**Server-side only.** Nothing is installed into BepInEx, and there is nothing to update when the game version changes.
-
-**Labs and the Labyrinth** return nothing, as in vanilla SPT.
-
-**Compatible with related mods.** Anything that changes insurance prices, return times, or which items become insured works alongside this.
-
-{.endtabset}
 
 ## Settings
 
@@ -105,9 +91,13 @@ Setting `enabled` to `false` disables the mod without uninstalling it.
 
 ## Installation
 
+Realistic Insurance is a server mod. Nothing is installed into BepInEx.
+
 1. Stop the server.
 2. Extract the archive into your SPT folder.
 3. Start the server. **Realistic Insurance** should appear in the mod list.
+
+> **Note** — `simulateItemsBeingTaken` must be `true` in `SPT_Runtime/SPT_Data/configs/insurance.json`. This is the default. If it has been disabled, SPT never removes anything from insurance and this mod has no effect; a warning appears in the server console if that setting is found.
 
 ## Status
 
