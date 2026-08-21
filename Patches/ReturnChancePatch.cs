@@ -253,7 +253,7 @@ namespace RealisticInsurance.Patches
             return chosen;
         }
 
-        private static double ReadDouble(Dictionary<string?, object?> ext, string key, double fallback)
+        private static double ReadDouble(IDictionary<string?, object?> ext, string key, double fallback)
         {
             if (!ext.TryGetValue(key, out var raw) || raw is null)
             {
@@ -269,7 +269,7 @@ namespace RealisticInsurance.Patches
             };
         }
 
-        private static bool ReadBool(Dictionary<string?, object?> ext, string key)
+        private static bool ReadBool(IDictionary<string?, object?> ext, string key)
         {
             if (!ext.TryGetValue(key, out var raw) || raw is null)
             {

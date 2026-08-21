@@ -22,7 +22,6 @@
     "meanWhenScav": 30,
     "meanWhenBoss": 70,
     "meanWhenOther": 50,
-    "returnPerCompetencePoint": 0.9,
     "extractPerCompetencePoint": 0.6
   },
 

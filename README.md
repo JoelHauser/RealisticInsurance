@@ -13,14 +13,16 @@ uniform 0–99 roll against a flat percentage from `insurance.json`
 (85% Prapor / 95% Therapist by default). This mod replaces that percentage with:
 
 ```
-returnChance = base[killerType]
-             + (competence - 50) * returnPerCompetencePoint
-             + looterDiedBonus      (only when the killer did NOT extract)
-             + traderModifier       (optional)
-             clamped to 0-100
+returnChance  = base[killerType]
+              + looterDiedBonus     (only when the killer did NOT extract)
+              + traderModifier      (optional)
+              clamped to 0-100
 
-itemsTaken   = round((1 - returnChance/100) * itemCount * jitter)
-             picked weighted by price ^ greedBias
+fractionTaken = (1 - returnChance/100)
+              + (competence - 50) * greed.perCompetencePoint[killerType]
+
+itemsTaken    = round(fractionTaken * itemCount * jitter)
+                picked weighted by price ^ greedBias
 ```
 
 **Killer type** comes from the post-raid aggressor. `Side` gives the broad class
@@ -80,12 +82,13 @@ and a level 10 overlap constantly. On top of that, `wildcardChancePercent` of
 raids ignore level entirely and draw competence flat 0–100 — the level 50
 hatchling runner and the level 8 prodigy.
 
-Competence then moves both factors in opposite directions:
+Competence raises the odds they extracted:
 
 ```
-returnChance  += (competence - 50) * returnPerCompetencePoint    (they take less)
-extractChance += (competence - 50) * extractPerCompetencePoint   (they get out)
+extractChance += (competence - 50) * extractPerCompetencePoint
 ```
+
+and shifts how much they took, signed per killer, as described above.
 
 **Level is only available for PMC killers.** SPT caches `pmcUSEC`/`pmcBEAR`
 bots (and only those) in `MatchBotDetailsCacheService`; the post-raid Aggressor
@@ -104,17 +107,22 @@ once per raid, then picks **which ones** weighted by `price ^ greedBias`. The
 count varies per raid, and the expensive kit goes first — losing your gun and
 rig but keeping ammo reads as being looted, rather than as dice.
 
-Measured over 15k simulated raids at 12 insured items, level 25:
+Measured over 20k simulated raids per row, 12 insured items, shipped config -
+fraction of the package **returned**:
 
-| `returnPerCompetencePoint` | mean returned | spread (sd) | cleaned out (0–20%) | barely touched (80–100%) |
+| scenario | mean | spread (sd) | cleaned out (0-20%) | barely touched (80-100%) |
 |---|---|---|---|---|
-| 0.35 | 64% | 12.9 | 0.0% | 13.8% |
-| **0.9 (default)** | **64%** | **20.5** | **2.2%** | **24.4%** |
-| 1.2 | 63% | 25.0 | 5.7% | 28.9% |
+| PMC lvl 15 | 56% | 20.9 | 4.9% | 13.9% |
+| PMC lvl 45 | 79% | 18.5 | 0.6% | 54.1% |
+| PMC lvl 75 | 90% | 15.4 | 0.4% | 82.5% |
+| player scav | 40% | 25.7 | 25.7% | 8.7% |
+| AI scav | 79% | 13.2 | 0.0% | 52.3% |
+| boss | 62% | 19.6 | 3.1% | 21.6% |
 | *vanilla SPT (flat 85%)* | *85%* | *10.3* | *0.0%* | *73.6%* |
 
-Level still reads through at the default — mean returned is 52% at level 10,
-64% at 25, 78% at 45 — it just no longer *determines* the outcome.
+Player scavs are the most punishing and the most variable; AI scavs barely touch
+you; a high-level PMC takes a token amount. Every row is 1.3x to 2.5x more spread
+than vanilla, which is the point.
 
 **All insured gear is covered**, not just what was equipped. `RollForDelete` is
 reached from both the regular-item and attachment paths.
@@ -125,16 +133,19 @@ reached from both the regular-item and attachment paths.
 
 | Key | Meaning |
 |---|---|
+| `enabled` | Master switch. `false` leaves SPT's vanilla behaviour completely untouched |
+| `greed.enabled` | `false` makes the amount taken depend only on the base rate, ignoring competence |
 | `baseReturnChancePercent.pmc` | Base return chance when killed by a PMC (AI or player) |
-| `baseReturnChancePercent.playerScav` | Base return chance when killed by a scav |
+| `baseReturnChancePercent.playerScav` | Base return chance when killed by a **player** scav |
+| `baseReturnChancePercent.scav` | Base return chance when killed by an **AI** scav |
 | `baseReturnChancePercent.boss` | Bosses, followers, cultists, Zryachiy, raiders/rogues |
 | `baseReturnChancePercent.other` | No killer recorded — see edge cases |
 | `looterCompetence.sigma` | Spread of the competence roll. Higher = level predicts less |
 | `looterCompetence.wildcardChancePercent` | Raids that ignore level entirely and draw flat 0-100 |
 | `looterCompetence.competencePerLevel` | How much each PMC level shifts the mean |
 | `looterCompetence.meanWhenScav` / `Boss` / `Other` | Means used when no level exists |
-| `looterCompetence.returnPerCompetencePoint` | Return % per competence point above 50 — **the main spread dial** |
 | `looterCompetence.extractPerCompetencePoint` | Extract % per competence point above 50 |
+| `greed.perCompetencePoint.*` | Fraction-of-kit taken per competence point above 50, **signed per killer** — negative = picky, positive = greedy. The main spread dial |
 | `valueWeightedLooting.greedBias` | Price exponent when choosing what to take. 1 = proportional, higher = greedier |
 | `valueWeightedLooting.countJitter` | Random wobble on how many items were taken |
 | `looterExtractedChancePercent` | Baseline chance the killer extracted, before competence |
@@ -160,8 +171,11 @@ reached from both the regular-item and attachment paths.
   directly, so a modded trader that enables insurance without registering there
   throws `KeyNotFoundException` in SPT itself. This mod never hands such a trader
   back to SPT, and logs a warning at startup naming any trader in that state.
-- **Labs / Labyrinth** insurance restrictions are handled by SPT before this
-  mod's roll and are left alone.
+- **Labs / Labyrinth**: SPT wipes the returned item list *after* this mod has
+  already chosen what was taken, so you correctly get nothing back - but the log
+  will still show a plan that was then discarded. Do not use those maps to verify
+  tuning. The gate is conditional: it only fires while the location's `Insurance`
+  flag is false.
 - **Packages insured before installing** carry no killer data. By default they
   fall back to SPT's flat chance.
 - Insurance returns run on a timer (`runIntervalSeconds`, default 600s) and can

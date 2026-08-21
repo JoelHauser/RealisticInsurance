@@ -180,7 +180,11 @@ namespace RealisticInsurance.Patches
             for (var i = __state; i < list.Count; i++)
             {
                 var package = list[i];
+                // SPT declares ExtensionData with a nullable key type, so constructing
+                // it trips CS8714. Nothing here ever writes a null key.
+#pragma warning disable CS8714
                 package.ExtensionData ??= new Dictionary<string?, object?>();
+#pragma warning restore CS8714
                 package.ExtensionData[KillerContext.ExtKeyType] = ctx.Type.ToString();
                 package.ExtensionData[KillerContext.ExtKeyExtracted] = ctx.LooterExtracted;
                 package.ExtensionData[KillerContext.ExtKeyCompetence] = ctx.Competence;

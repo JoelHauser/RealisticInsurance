@@ -80,10 +80,6 @@ namespace RealisticInsurance
         [JsonPropertyName("meanWhenBoss")] public double MeanWhenBoss { get; set; } = 70;
         [JsonPropertyName("meanWhenOther")] public double MeanWhenOther { get; set; } = 50;
 
-        /// <summary>Return % added per point of competence above 50 (they take less).</summary>
-        [JsonPropertyName("returnPerCompetencePoint")]
-        public double ReturnPerCompetencePoint { get; set; } = 0.9;
-
         /// <summary>Extract % added per point of competence above 50.</summary>
         [JsonPropertyName("extractPerCompetencePoint")]
         public double ExtractPerCompetencePoint { get; set; } = 0.6;
