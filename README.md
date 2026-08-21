@@ -6,6 +6,21 @@ gear** — then decides which specific items they walked off with by value.
 
 Server mod for SPT 4.1.x.
 
+## Status
+
+**0.1.0 — early. The return path has not yet been observed running.**
+
+Verified in-game: the raid-end capture, killer classification (PMC / player scav
+/ AI scav / boss), the PMC level lookup, and persistence of that context onto the
+insurance package. Not yet verified in-game: the value-weighted selection and the
+per-item verdicts, i.e. what you actually get back. Set `logRolls: true` if you
+want to watch it decide.
+
+Note this mod **replaces per-trader return chances entirely**, including any set
+by trader mods. That is deliberate — the model is built on who killed you, not on
+which trader you insured with — but if you value a custom trader's own insurance
+rate, `traderModifierPercent` is the way to express it.
+
 ## How it works
 
 SPT rolls each insured item in `InsuranceController.RollForDelete`, comparing a

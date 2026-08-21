@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>0.1.0</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -66,6 +66,7 @@
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStageDir)" />
     <Copy SourceFiles="config\config.json" DestinationFolder="$(ModStageDir)\config" />
     <Copy SourceFiles="README.md" DestinationFolder="$(ModStageDir)" />
+    <Copy SourceFiles="LICENSE" DestinationFolder="$(ModStageDir)" />
     <Delete Files="$(ZipPath)" />
     <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
     <RemoveDir Directories="$(StagingDir)" />
