@@ -117,27 +117,22 @@ item is an **independent** roll at the same rate. Independent rolls concentrate:
 12 items at 55% lands in the 40–60% band nearly 60% of the time, so you get
 "about half my stuff back" over and over.
 
-So instead of rolling per item, the mod decides **how many** items were taken
-once per raid, then picks **which ones** weighted by `price ^ greedBias`. The
-count varies per raid, and the expensive kit goes first — losing your gun and
-rig but keeping ammo reads as being looted, rather than as dice.
+So instead the mod works in **kit items**, not database entries. A 34-entry
+package is usually only ~5 real objects - a weapon and its 12 attachments, a rig
+and its 14 inserts, a helmet, a backpack - and taking a weapon takes everything
+bolted to it. Each kit item is priced *including* its attachments and gets its
+own roll, scaled so the expected loss matches the configured fraction while the
+actual count varies.
 
-Measured over 20k simulated raids per row, 12 insured items, shipped config -
-fraction of the package **returned**:
+Measured against two real insurance packages (4k trials each):
 
-| scenario | mean | spread (sd) | cleaned out (0-20%) | barely touched (80-100%) |
-|---|---|---|---|---|
-| PMC lvl 15 | 56% | 20.9 | 4.9% | 13.9% |
-| PMC lvl 45 | 79% | 18.5 | 0.6% | 54.1% |
-| PMC lvl 75 | 90% | 15.4 | 0.4% | 82.5% |
-| player scav | 40% | 25.7 | 25.7% | 8.7% |
-| AI scav | 79% | 13.2 | 0.0% | 52.3% |
-| boss | 62% | 19.6 | 3.1% | 21.6% |
-| *vanilla SPT (flat 85%)* | *85%* | *10.3* | *0.0%* | *73.6%* |
+| package | killer | 0 lost | 1 | 2 | 3 | avg returned |
+|---|---|---|---|---|---|---|
+| 49 entries / 6 kit items | PMC, competence 87 | 61.8% | 32.2% | 5.7% | 0.2% | 43 / 49 |
+| 34 entries / 5 kit items | player scav, competence 37 | 9.4% | 73.5% | 16.1% | 0.9% | 19 / 34 |
 
-Player scavs are the most punishing and the most variable; AI scavs barely touch
-you; a high-level PMC takes a token amount. Every row is 1.3x to 2.5x more spread
-than vanilla, which is the point.
+A picky PMC usually walks past or takes one thing, and occasionally takes three.
+A player scav nearly always takes something. The count is never fixed.
 
 **All insured gear is covered**, not just what was equipped. `RollForDelete` is
 reached from both the regular-item and attachment paths.

@@ -87,6 +87,11 @@ namespace RealisticInsurance.Patches
             _taken = null;
             _active = false;
             _legacy = false;
+
+            // Safe default: if anything goes wrong, gear comes BACK rather than
+            // being destroyed. Previously this kept the last package's value, and a
+            // stale 0 here deletes an entire package.
+            _fallbackReturnChance = 100d;
         }
 
         internal static void Build(
@@ -176,13 +181,14 @@ namespace RealisticInsurance.Patches
                 fractionTaken *= 1d + randomUtil.GetDouble(-jitter, jitter);
             }
 
-            var take = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * items.Count);
-            _taken = SelectByValue(items, take, config.ValueWeightedLooting.GreedBias, priceService, randomUtil);
+            var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * items.Count);
+            _taken = SelectRoots(items, targetEntries, config.ValueWeightedLooting.GreedBias,
+                priceService, randomUtil, out var rootsTaken, out var rootsTotal);
 
             if (config.LogRolls)
             {
                 logger.Info(
-                    $"[RealisticInsurance] package {insured.TraderId}: killer={killerType}, competence={competence:0.#}, extracted={looterExtracted} -> return {_fallbackReturnChance:0.#}%, took {_taken.Count}/{items.Count}");
+                    $"[RealisticInsurance] package {insured.TraderId}: killer={killerType}, competence={competence:0.#}, extracted={looterExtracted} -> target {fractionTaken * 100d:0.#}% | took {rootsTaken}/{rootsTotal} kit item(s) = {_taken.Count}/{items.Count} entries");
 
                 // Listing what was taken vs kept is the only way to confirm the
                 // value weighting is actually biting.
@@ -196,58 +202,137 @@ namespace RealisticInsurance.Patches
         }
 
         /// <summary>
-        /// Weighted draw without replacement, weight = price ^ greedBias. The expensive
-        /// kit goes first, but a cheap item is never impossible to lose.
+        /// Picks whole KIT ITEMS, not individual database entries.
+        ///
+        /// A 34-entry package is typically only ~5 real objects: a weapon and its 12
+        /// attachments, a rig and its 14 inserts, a helmet, a backpack. Selecting
+        /// entries individually and weighting by price targets the roots anyway (they
+        /// are the expensive ones), and taking a root drags every child with it - so
+        /// "3 entries taken" silently meant "your gun, rig and helmet, and everything
+        /// on them". That emptied entire packages.
+        ///
+        /// So: candidates are roots, each priced INCLUDING its attachments, and the
+        /// budget is spent in whole objects until the entry target is met.
         /// </summary>
-        private static HashSet<MongoId> SelectByValue(
+        private static HashSet<MongoId> SelectRoots(
             List<Item> items,
-            int take,
+            int targetEntries,
             double greedBias,
             RagfairPriceService priceService,
-            RandomUtil randomUtil)
+            RandomUtil randomUtil,
+            out int rootsTaken,
+            out int rootsTotal)
         {
             var chosen = new HashSet<MongoId>();
-            if (take <= 0)
+            rootsTaken = 0;
+
+            // Item.ParentId is a string while Item.Id is a MongoId, so the graph is
+            // keyed by string to avoid converting on every comparison.
+            var byId = new Dictionary<string, Item>(items.Count, StringComparer.Ordinal);
+            foreach (var item in items)
+            {
+                byId[item.Id.ToString()] = item;
+            }
+
+            var childrenOf = new Dictionary<string, List<Item>>(StringComparer.Ordinal);
+            var roots = new List<Item>();
+            foreach (var item in items)
+            {
+                // A root is anything whose parent is not itself inside this package -
+                // i.e. the equipment slots, not the mods bolted onto them.
+                if (item.ParentId is not null && byId.ContainsKey(item.ParentId))
+                {
+                    if (!childrenOf.TryGetValue(item.ParentId, out var list))
+                    {
+                        childrenOf[item.ParentId] = list = new List<Item>();
+                    }
+
+                    list.Add(item);
+                }
+                else
+                {
+                    roots.Add(item);
+                }
+            }
+
+            rootsTotal = roots.Count;
+            if (targetEntries <= 0 || roots.Count == 0)
             {
                 return chosen;
             }
 
-            var pool = new List<(MongoId Id, double Weight)>(items.Count);
-            foreach (var item in items)
+            IEnumerable<Item> Descendants(Item root)
             {
-                var price = priceService.GetDynamicItemPrice(item.Template, Money.ROUBLES) ?? 0d;
-
-                // Floor keeps zero-priced oddities selectable rather than immortal.
-                pool.Add((item.Id, Math.Pow(Math.Max(price, 1d), greedBias)));
-            }
-
-            take = Math.Min(take, pool.Count);
-            for (var n = 0; n < take; n++)
-            {
-                var total = 0d;
-                foreach (var entry in pool)
+                var stack = new Stack<Item>();
+                stack.Push(root);
+                while (stack.Count > 0)
                 {
-                    total += entry.Weight;
-                }
-
-                if (total <= 0d)
-                {
-                    break;
-                }
-
-                var cursor = randomUtil.GetDouble(0d, total);
-                for (var i = 0; i < pool.Count; i++)
-                {
-                    cursor -= pool[i].Weight;
-                    if (cursor > 0d)
+                    var cur = stack.Pop();
+                    if (!childrenOf.TryGetValue(cur.Id.ToString(), out var kids))
                     {
                         continue;
                     }
 
-                    chosen.Add(pool[i].Id);
-                    pool.RemoveAt(i);
-                    break;
+                    foreach (var kid in kids)
+                    {
+                        yield return kid;
+                        stack.Push(kid);
+                    }
                 }
+            }
+
+            double PriceOf(Item item)
+                => priceService.GetDynamicItemPrice(item.Template, Money.ROUBLES) ?? 0d;
+
+            // A kitted weapon is worth its mods, so price each root as the whole object.
+            var pool = new List<(Item Root, List<Item> Group, double Weight)>(roots.Count);
+            foreach (var root in roots)
+            {
+                var group = new List<Item> { root };
+                group.AddRange(Descendants(root));
+
+                var value = 0d;
+                foreach (var member in group)
+                {
+                    value += PriceOf(member);
+                }
+
+                pool.Add((root, group, Math.Pow(Math.Max(value, 1d), greedBias)));
+            }
+
+            // Each kit item gets its OWN roll rather than a shared budget being spent
+            // greedily. A budget stops the moment it is met, which - given a rig or a
+            // weapon is most of a package - meant almost every raid lost exactly one
+            // thing. Whether a looter grabs your rig AND your helmet is up to them.
+            //
+            // Probabilities are scaled so the EXPECTED entries taken still equals the
+            // target, while the actual count varies: sometimes nothing, sometimes
+            // three things.
+            var weightedSize = 0d;
+            foreach (var entry in pool)
+            {
+                weightedSize += entry.Weight * entry.Group.Count;
+            }
+
+            if (weightedSize <= 0d)
+            {
+                return chosen;
+            }
+
+            foreach (var entry in pool)
+            {
+                var chance = Math.Clamp(targetEntries * entry.Weight / weightedSize, 0d, 1d);
+                if (randomUtil.GetDouble(0d, 1d) >= chance)
+                {
+                    continue;
+                }
+
+                foreach (var member in entry.Group)
+                {
+                    chosen.Add(member.Id);
+                }
+
+                rootsTaken++;
             }
 
             return chosen;
