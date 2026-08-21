@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Reflection;
 using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
@@ -78,7 +79,8 @@ namespace RealisticInsurance.Patches
             // Mean competence: level is only a hint, and only PMCs have one.
             double mean = killerType switch
             {
-                KillerType.PlayerScav => comp.MeanWhenScav,
+                KillerType.PlayerScav => comp.MeanWhenPlayerScav,
+                KillerType.Scav => comp.MeanWhenScav,
                 KillerType.Boss => comp.MeanWhenBoss,
                 KillerType.Pmc => killerLevel.HasValue ? comp.MeanForLevel(killerLevel.Value) : comp.CompetenceAtPivot,
                 _ => comp.MeanWhenOther
@@ -119,6 +121,11 @@ namespace RealisticInsurance.Patches
 
             if (config.LogRolls)
             {
+                // Diagnostic: SPT only creates an insurance package when the client
+                // reports lost insured items, so surface that count directly.
+                var lostCount = request?.LostInsuredItems?.Count() ?? -1;
+                _logger.Info($"[RealisticInsurance] raid end diag: isDead={isDead}, exit={request?.Results?.Result}, lostInsuredItems={lostCount} (0 or -1 means SPT will NOT create an insurance package)");
+
                 _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, competence={competence:0.#}{(wildcard ? " (WILDCARD)" : "")}, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
             }
         }

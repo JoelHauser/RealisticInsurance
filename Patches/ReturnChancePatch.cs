@@ -132,14 +132,12 @@ namespace RealisticInsurance.Patches
             {
                 KillerType.Pmc => config.BaseReturnChancePercent.Pmc,
                 KillerType.PlayerScav => config.BaseReturnChancePercent.PlayerScav,
+                KillerType.Scav => config.BaseReturnChancePercent.Scav,
                 KillerType.Boss => config.BaseReturnChancePercent.Boss,
                 _ => config.BaseReturnChancePercent.Other
             };
 
-            // A more competent looter is pickier, so more of your kit survives.
-            returnChance += (competence - 50d) * config.LooterCompetence.ReturnPerCompetencePoint;
-
-            // ...but if they never got out, it is recoverable regardless.
+            // If they never got out, the gear is recoverable regardless of skill.
             if (!looterExtracted)
             {
                 returnChance += config.LooterDiedBonusPercent;
@@ -150,7 +148,20 @@ namespace RealisticInsurance.Patches
                 returnChance += traderMod;
             }
 
-            _fallbackReturnChance = Math.Clamp(returnChance, 0d, 100d);
+            returnChance = Math.Clamp(returnChance, 0d, 100d);
+
+            // Competence shifts how much they take, and the SIGN depends on who they
+            // are: a skilled PMC is picky, a skilled player scav is greedy.
+            var fractionTaken = 1d - (returnChance / 100d);
+            if (config.Greed.Enabled)
+            {
+                fractionTaken += (competence - 50d) * config.Greed.PerCompetencePoint.For(killerType);
+            }
+
+            fractionTaken = Math.Clamp(fractionTaken, 0d, 1d);
+
+            // Keep the attachment-counting fallback consistent with the plan.
+            _fallbackReturnChance = (1d - fractionTaken) * 100d;
 
             var items = insured.Items;
             if (!config.ValueWeightedLooting.Enabled || items is null || items.Count == 0)
@@ -158,8 +169,6 @@ namespace RealisticInsurance.Patches
                 return; // fall back to a per-item probability roll
             }
 
-            // How many things did they actually carry off?
-            var fractionTaken = 1d - (_fallbackReturnChance / 100d);
             var jitter = config.ValueWeightedLooting.CountJitter;
             if (jitter > 0d)
             {

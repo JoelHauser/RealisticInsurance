@@ -40,7 +40,7 @@ namespace RealisticInsurance
                 patch.Enable();
             }
 
-            logger.Info($"[RealisticInsurance] loaded - pmc {Config.BaseReturnChancePercent.Pmc}% / scav {Config.BaseReturnChancePercent.PlayerScav}% / boss {Config.BaseReturnChancePercent.Boss}% / other {Config.BaseReturnChancePercent.Other}%, looter extracts {Config.LooterExtractedChancePercent}% (+{Config.LooterDiedBonusPercent}% when they don't)");
+            logger.Info($"[RealisticInsurance] loaded - pmc {Config.BaseReturnChancePercent.Pmc}% / playerScav {Config.BaseReturnChancePercent.PlayerScav}% / scav {Config.BaseReturnChancePercent.Scav}% / boss {Config.BaseReturnChancePercent.Boss}% / other {Config.BaseReturnChancePercent.Other}%, looter extracts {Config.LooterExtractedChancePercent}% (+{Config.LooterDiedBonusPercent}% when they don't)");
             return Task.CompletedTask;
         }
     }

@@ -23,9 +23,42 @@ itemsTaken   = round((1 - returnChance/100) * itemCount * jitter)
              picked weighted by price ^ greedBias
 ```
 
-**Killer type** comes from the post-raid aggressor, using `Side` (`Usec`/`Bear`
-= PMC, `Savage` = scav) with `Role` used only to split bosses and their
-followers into their own bucket.
+**Killer type** comes from the post-raid aggressor. `Side` gives the broad class
+(`Usec`/`Bear` = PMC, `Savage` = scav) and `Role` splits bosses, guards, raiders,
+rogues and cultists into their own bucket.
+
+Player scavs are separated from AI scavs, because they behave nothing alike. A
+real player on a scav run carries a player identity even though its in-raid name
+is a generated scav name:
+
+| | player scav | AI scav |
+|---|---|---|
+| `MainProfileNickname` | `"LeaveAMark"` | `null` |
+| `Category` | `"UniqueId"` | `"Default"` |
+| `Role` / `Name` | indistinguishable | indistinguishable |
+
+### Competence and greed are different traits
+
+Conflating them is wrong. A skilled PMC is skilled **and picky** - already kitted,
+takes only upgrades. A skilled player scav is skilled **and greedy** - arrived with
+nothing, takes everything. Both extract more often, but they empty your corpse to
+very different degrees.
+
+So competence drives *extraction odds* for everyone, while its effect on *how much
+is taken* carries a per-killer sign:
+
+```
+fractionTaken = (1 - returnChance/100) + (competence - 50) * greed.perCompetencePoint[killer]
+```
+
+Fraction of kit taken, when the looter extracted:
+
+| killer | comp 20 | comp 40 | comp 60 | comp 85 |
+|---|---|---|---|---|
+| pmc | 72% | 54% | 36% | 13% |
+| playerScav | 28% | 46% | 64% | 86% |
+| scav | 37% | 29% | 21% | 11% |
+| boss | 87% | 69% | 51% | 28% |
 
 **Looter extraction is rolled once per raid, not per item.** The killer either
 escaped with your kit or didn't — rolling per item would let one corpse both

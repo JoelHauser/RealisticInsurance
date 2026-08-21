@@ -1,10 +1,11 @@
 {
   "enabled": true,
 
-  "// baseReturnChancePercent": "Baseline chance an insured item is RETURNED, by what killed you. Competence and the extraction roll move it from here.",
+  "// baseReturnChancePercent": "Baseline chance an insured item is RETURNED, by what killed you. playerScav = a real player on a scav run (loots hard, extracts); scav = an AI scav (grabs little, often dies).",
   "baseReturnChancePercent": {
     "pmc": 55,
-    "playerScav": 70,
+    "playerScav": 45,
+    "scav": 75,
     "boss": 40,
     "other": 90
   },
@@ -17,11 +18,24 @@
     "pivotLevel": 25,
     "competenceAtPivot": 50,
     "competencePerLevel": 1.2,
-    "meanWhenScav": 35,
+    "meanWhenPlayerScav": 65,
+    "meanWhenScav": 30,
     "meanWhenBoss": 70,
     "meanWhenOther": 50,
     "returnPerCompetencePoint": 0.9,
     "extractPerCompetencePoint": 0.6
+  },
+
+  "// greed": "Competence and greed are different traits. A skilled PMC is PICKY (takes less); a skilled player scav is GREEDY (takes everything). Hence the sign flips per killer. Units are fraction-of-kit per competence point above 50.",
+  "greed": {
+    "enabled": true,
+    "perCompetencePoint": {
+      "pmc": -0.009,
+      "playerScav": 0.009,
+      "scav": -0.004,
+      "boss": -0.009,
+      "other": 0
+    }
   },
 
   "// valueWeightedLooting": "Decide how MANY items were taken once per raid, then pick WHICH ones weighted by price. This is what stops every raid returning the same middling fraction.",

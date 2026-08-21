@@ -2,7 +2,7 @@ using SPTarkov.Server.Core.Models.Eft.Common;
 
 namespace RealisticInsurance
 {
-    internal enum KillerType { Pmc, PlayerScav, Boss, Other }
+    internal enum KillerType { Pmc, PlayerScav, Scav, Boss, Other }
 
     /// <summary>
     /// What we learned at raid end and need again (potentially hours later, across a
@@ -53,7 +53,15 @@ namespace RealisticInsurance
             var side = aggressor.Side ?? string.Empty;
             if (side.Equals("Savage", StringComparison.OrdinalIgnoreCase))
             {
-                return KillerType.PlayerScav;
+                // A player scav carries a real player identity even though its
+                // in-raid Name is a generated scav name. AI scavs have neither:
+                //   player scav -> MainProfileNickname="LeaveAMark", Category="UniqueId"
+                //   AI scav     -> MainProfileNickname=null,         Category="Default"
+                var hasPlayerIdentity =
+                    !string.IsNullOrWhiteSpace(aggressor.MainProfileNickname)
+                    || string.Equals(aggressor.Category, "UniqueId", StringComparison.OrdinalIgnoreCase);
+
+                return hasPlayerIdentity ? KillerType.PlayerScav : KillerType.Scav;
             }
 
             if (side.Equals("Usec", StringComparison.OrdinalIgnoreCase)

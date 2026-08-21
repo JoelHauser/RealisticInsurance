@@ -13,6 +13,9 @@ namespace RealisticInsurance
         [JsonPropertyName("looterCompetence")]
         public LooterCompetence LooterCompetence { get; set; } = new();
 
+        [JsonPropertyName("greed")]
+        public GreedModel Greed { get; set; } = new();
+
         [JsonPropertyName("valueWeightedLooting")]
         public ValueWeightedLooting ValueWeightedLooting { get; set; } = new();
 
@@ -35,7 +38,8 @@ namespace RealisticInsurance
     internal class BaseReturnChances
     {
         [JsonPropertyName("pmc")] public double Pmc { get; set; } = 55;
-        [JsonPropertyName("playerScav")] public double PlayerScav { get; set; } = 70;
+        [JsonPropertyName("playerScav")] public double PlayerScav { get; set; } = 45;
+        [JsonPropertyName("scav")] public double Scav { get; set; } = 75;
         [JsonPropertyName("boss")] public double Boss { get; set; } = 40;
         [JsonPropertyName("other")] public double Other { get; set; } = 90;
     }
@@ -71,7 +75,8 @@ namespace RealisticInsurance
         public double CompetencePerLevel { get; set; } = 1.2;
 
         /// <summary>Means used when no level is available.</summary>
-        [JsonPropertyName("meanWhenScav")] public double MeanWhenScav { get; set; } = 35;
+        [JsonPropertyName("meanWhenPlayerScav")] public double MeanWhenPlayerScav { get; set; } = 65;
+        [JsonPropertyName("meanWhenScav")] public double MeanWhenScav { get; set; } = 30;
         [JsonPropertyName("meanWhenBoss")] public double MeanWhenBoss { get; set; } = 70;
         [JsonPropertyName("meanWhenOther")] public double MeanWhenOther { get; set; } = 50;
 
@@ -85,6 +90,44 @@ namespace RealisticInsurance
 
         public double MeanForLevel(int level)
             => Math.Clamp(CompetenceAtPivot + (level - PivotLevel) * CompetencePerLevel, 0d, 100d);
+    }
+
+    /// <summary>
+    /// Competence and greed are different traits, and conflating them was wrong.
+    ///
+    ///   A skilled PMC is skilled AND PICKY   - already kitted, takes only upgrades.
+    ///   A skilled player scav is skilled AND GREEDY - came in with nothing, takes everything.
+    ///
+    /// Both extract more often, but they empty your corpse to very different degrees.
+    /// So the competence -> amount-taken relationship carries a per-killer SIGN:
+    /// negative for PMCs and bosses, positive for player scavs.
+    /// </summary>
+    internal class GreedModel
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Change in fraction taken per competence point above 50.</summary>
+        [JsonPropertyName("perCompetencePoint")]
+        public GreedSlopes PerCompetencePoint { get; set; } = new();
+    }
+
+    internal class GreedSlopes
+    {
+        [JsonPropertyName("pmc")] public double Pmc { get; set; } = -0.009;
+        [JsonPropertyName("playerScav")] public double PlayerScav { get; set; } = 0.009;
+        [JsonPropertyName("scav")] public double Scav { get; set; } = -0.004;
+        [JsonPropertyName("boss")] public double Boss { get; set; } = -0.009;
+        [JsonPropertyName("other")] public double Other { get; set; }
+
+        public double For(KillerType t) => t switch
+        {
+            KillerType.Pmc => Pmc,
+            KillerType.PlayerScav => PlayerScav,
+            KillerType.Scav => Scav,
+            KillerType.Boss => Boss,
+            _ => Other
+        };
     }
 
     /// <summary>
