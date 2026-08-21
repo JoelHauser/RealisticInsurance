@@ -6,6 +6,7 @@ using SPTarkov.Server.Core.Controllers;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Enums;
+using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Helpers.Items;
 using SPTarkov.Server.Core.Services.Ragfair;
 using SPTarkov.Server.Core.Utils;
@@ -291,10 +292,23 @@ namespace RealisticInsurance.Patches
     public class ReturnChancePatch : AbstractPatch
     {
         private static RandomUtil _randomUtil = null!;
+        private static InsuranceConfig _insuranceConfig = null!;
 
-        public ReturnChancePatch(RandomUtil randomUtil)
+        public ReturnChancePatch(RandomUtil randomUtil, InsuranceConfig insuranceConfig)
         {
             _randomUtil = randomUtil;
+            _insuranceConfig = insuranceConfig;
+        }
+
+        /// <summary>
+        /// SPT indexes insuranceConfig.ReturnChancePercent[traderId] directly, having
+        /// only guarded that the trader exists in the trader table. A modded trader
+        /// that offers insurance without registering itself in insurance.json throws
+        /// KeyNotFoundException there. Never hand such a trader back to SPT.
+        /// </summary>
+        private static bool SptCanHandle(MongoId traderId)
+        {
+            return _insuranceConfig?.ReturnChancePercent?.ContainsKey(traderId) == true;
         }
 
         protected override MethodBase? GetTargetMethod()
@@ -308,15 +322,22 @@ namespace RealisticInsurance.Patches
         public static bool Prefix(ref bool? __result, MongoId traderId, Item? insuredItem)
         {
             var config = RealisticInsuranceMod.Config;
-            if (config is null || !config.Enabled || !RaidLootPlan.Active)
-            {
-                return true; // let SPT handle it
-            }
 
-            if (RaidLootPlan.Legacy
-                && config.LegacyPackageBehaviour.Equals("spt", StringComparison.OrdinalIgnoreCase))
+            var deferToSpt = config is null || !config.Enabled || !RaidLootPlan.Active
+                || (RaidLootPlan.Legacy && config.LegacyPackageBehaviour.Equals("spt", StringComparison.OrdinalIgnoreCase));
+
+            if (deferToSpt)
             {
-                return true;
+                // Only if SPT can actually price this trader; otherwise it would throw.
+                if (SptCanHandle(traderId))
+                {
+                    return true;
+                }
+
+                // Unknown (modded) trader: answer it ourselves rather than crash.
+                var fallbackChance = config?.BaseReturnChancePercent.Other ?? 90d;
+                __result = (_randomUtil.GetInt(0, 9999) / 100) >= fallbackChance;
+                return false;
             }
 
             // A known item and a plan: the answer was already decided for this raid.

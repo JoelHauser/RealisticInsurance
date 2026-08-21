@@ -5,6 +5,7 @@ using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers.Server;
 using SPTarkov.Server.Core.Models.Spt.Config;
+using SPTarkov.Server.Core.Models.Spt.Tables;
 
 namespace RealisticInsurance
 {
@@ -12,6 +13,7 @@ namespace RealisticInsurance
     public class RealisticInsuranceMod(
         ModHelper modHelper,
         InsuranceConfig insuranceConfig,
+        TradersTable tradersTable,
         IEnumerable<IRuntimePatch> patches,
         ISptLogger<RealisticInsuranceMod> logger) : IOnLoad
     {
@@ -33,6 +35,20 @@ namespace RealisticInsurance
             if (!insuranceConfig.SimulateItemsBeingTaken)
             {
                 logger.Warning("[RealisticInsurance] insurance.json has simulateItemsBeingTaken=false, so no items are ever lost and this mod will have no effect. Set it to true.");
+            }
+
+            // A modded trader that offers insurance but never registers itself in
+            // insurance.json makes vanilla SPT throw. This mod handles those traders
+            // itself, but the user should still know they are misconfigured.
+            var registered = insuranceConfig.ReturnChancePercent?.Keys.ToHashSet() ?? new();
+            foreach (var (traderId, trader) in tradersTable)
+            {
+                if (trader?.Base?.Insurance?.Availability != true || registered.Contains(traderId))
+                {
+                    continue;
+                }
+
+                logger.Warning($"[RealisticInsurance] trader '{trader.Base.Nickname}' ({traderId}) offers insurance but is not listed in insurance.json returnChancePercent. Vanilla SPT would throw on it; this mod will use the '{Config.BaseReturnChancePercent.Other}%' fallback instead.");
             }
 
             foreach (var patch in patches)

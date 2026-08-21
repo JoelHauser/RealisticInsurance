@@ -153,6 +153,13 @@ reached from both the regular-item and attachment paths.
 - **`simulateItemsBeingTaken: false`** in `insurance.json` makes SPT skip the
   delete pass entirely, so nothing is ever lost and this mod does nothing. The
   mod logs a warning at startup if it sees this.
+- **Modded traders that offer insurance** work fine: the return chance is keyed
+  by *killer type*, not by trader, and `traderModifierPercent` is an optional
+  per-trader tweak that simply defaults to 0 for traders it does not list.
+  Note that vanilla SPT indexes `insurance.json` `returnChancePercent[traderId]`
+  directly, so a modded trader that enables insurance without registering there
+  throws `KeyNotFoundException` in SPT itself. This mod never hands such a trader
+  back to SPT, and logs a warning at startup naming any trader in that state.
 - **Labs / Labyrinth** insurance restrictions are handled by SPT before this
   mod's roll and are left alone.
 - **Packages insured before installing** carry no killer data. By default they
