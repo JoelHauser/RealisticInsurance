@@ -8,13 +8,41 @@ Server mod for SPT 4.1.x.
 
 ## Status
 
-**0.1.0 — early. The return path has not yet been observed running.**
+**0.1.0 — verified working in game, but young.**
 
-Verified in-game: the raid-end capture, killer classification (PMC / player scav
-/ AI scav / boss), the PMC level lookup, and persistence of that context onto the
-insurance package. Not yet verified in-game: the value-weighted selection and the
-per-item verdicts, i.e. what you actually get back. Set `logRolls: true` if you
-want to watch it decide.
+The full pipeline has been observed end to end on a live server: the raid-end
+capture, killer classification, the PMC level lookup, persistence of that
+context across a server restart, the per-package plan, the per-item verdicts,
+and the returned mail.
+
+Observed working, per killer type:
+
+| killer | seen | result |
+|---|---|---|
+| PMC | level 73 resolved from SPT's bot cache | took nothing at competence 100 (see below) |
+| player scav | distinguished from an AI scav correctly | classified, package stamped |
+| boss | no level, fell back to `meanWhenBoss` | **took 2 of 4 kit items, 32 of 53 entries** |
+
+The boss raid is the one that demonstrates the whole design: he took a kitted
+SCAR-H and an Osprey carrier loaded with Hesco plates - roughly 1.4 million
+roubles - and walked past an 80,371 RUB SKS and an 8,514 RUB helmet. Every
+attachment travelled with its parent.
+
+Two bugs were caught by testing rather than by reasoning, and both are fixed:
+
+- Selection worked on database entries rather than kit items, so taking the
+  three most valuable entries meant taking your weapon, rig and helmet *and
+  everything attached to them*. An entire 62-item package was destroyed while
+  the log cheerfully reported "took 3".
+- The competence slopes could cancel the base exactly, producing absolutes: a
+  competence-100 PMC computed to 0% and ignored a 291,890 RUB armour plate,
+  while a competence-100 player scav computed to 100% and took every item.
+  `minFractionTaken` / `maxFractionTaken` now bound both ends.
+
+Not yet observed in game: AI scav kills (distinct from player scavs),
+environmental deaths, wildcard raids, packages insured before installing, and
+modded traders. All are handled in code and reasoned through, none have been
+watched running.
 
 Note this mod **replaces per-trader return chances entirely**, including any set
 by trader mods. That is deliberate — the model is built on who killed you, not on
@@ -198,6 +226,25 @@ reached from both the regular-item and attachment paths.
 - Insurance returns run on a timer (`runIntervalSeconds`, default 600s) and can
   span a server restart, so the killer data is persisted into the profile
   rather than held in memory.
+
+## Testing it yourself
+
+Insurance returns are slow by design, so to watch the mod work without waiting
+overnight, temporarily set in `SPT_Runtime/SPT_Data/configs/insurance.json`:
+
+```json
+"returnTimeOverrideSeconds": 60,
+"runIntervalSeconds": 30,
+```
+
+and `"logRolls": true` in this mod's config. Packages then return about a minute
+after the raid, and the console prints the decision plus every item as `LOST` or
+`kept` with its price. Put both settings back afterwards (`0` and `600`) — the
+override applies to every trader, so it collapses custom traders' return times
+too.
+
+Note the override only applies when a package is **created**, so it cannot
+speed up insurance that is already pending.
 
 ## Building
 
