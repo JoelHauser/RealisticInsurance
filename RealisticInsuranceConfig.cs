@@ -110,10 +110,10 @@ namespace RealisticInsurance
 
     internal class GreedSlopes
     {
-        [JsonPropertyName("pmc")] public double Pmc { get; set; } = -0.009;
-        [JsonPropertyName("playerScav")] public double PlayerScav { get; set; } = 0.009;
+        [JsonPropertyName("pmc")] public double Pmc { get; set; } = -0.006;
+        [JsonPropertyName("playerScav")] public double PlayerScav { get; set; } = 0.007;
         [JsonPropertyName("scav")] public double Scav { get; set; } = -0.004;
-        [JsonPropertyName("boss")] public double Boss { get; set; } = -0.009;
+        [JsonPropertyName("boss")] public double Boss { get; set; } = -0.006;
         [JsonPropertyName("other")] public double Other { get; set; }
 
         public double For(KillerType t) => t switch
@@ -144,5 +144,16 @@ namespace RealisticInsurance
         /// <summary>Random +/- wobble applied to the taken count, as a fraction.</summary>
         [JsonPropertyName("countJitter")]
         public double CountJitter { get; set; } = 0.15;
+
+        /// <summary>
+        /// Floor and ceiling on the fraction taken, so neither end is absolute.
+        /// Even a fully kitted chad will lift a good gun, helmet or backpack to sell,
+        /// and even the greediest looter leaves something behind.
+        /// </summary>
+        [JsonPropertyName("minFractionTaken")]
+        public double MinFractionTaken { get; set; } = 0.08;
+
+        [JsonPropertyName("maxFractionTaken")]
+        public double MaxFractionTaken { get; set; } = 0.92;
     }
 }

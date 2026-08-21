@@ -29,10 +29,10 @@
   "greed": {
     "enabled": true,
     "perCompetencePoint": {
-      "pmc": -0.009,
-      "playerScav": 0.009,
+      "pmc": -0.006,
+      "playerScav": 0.007,
       "scav": -0.004,
-      "boss": -0.009,
+      "boss": -0.006,
       "other": 0
     }
   },
@@ -41,7 +41,9 @@
   "valueWeightedLooting": {
     "enabled": true,
     "greedBias": 2.0,
-    "countJitter": 0.15
+    "countJitter": 0.15,
+    "minFractionTaken": 0.08,
+    "maxFractionTaken": 0.92
   },
 
   "// looterExtractedChancePercent": "Baseline chance the killer survived and extracted with your gear, before competence is applied.",

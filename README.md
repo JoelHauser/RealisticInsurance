@@ -134,6 +134,11 @@ Measured against two real insurance packages (4k trials each):
 A picky PMC usually walks past or takes one thing, and occasionally takes three.
 A player scav nearly always takes something. The count is never fixed.
 
+Neither end is ever absolute. Before `minFractionTaken`/`maxFractionTaken`
+existed, a competence-100 PMC computed to exactly 0% and walked past a 291,890
+RUB armour plate, while a competence-100 player scav computed to exactly 100%
+and took every last item. Both were observed in testing.
+
 **All insured gear is covered**, not just what was equipped. `RollForDelete` is
 reached from both the regular-item and attachment paths.
 
@@ -158,6 +163,8 @@ reached from both the regular-item and attachment paths.
 | `greed.perCompetencePoint.*` | Fraction-of-kit taken per competence point above 50, **signed per killer** — negative = picky, positive = greedy. The main spread dial |
 | `valueWeightedLooting.greedBias` | Price exponent when choosing what to take. 1 = proportional, higher = greedier |
 | `valueWeightedLooting.countJitter` | Random wobble on how many items were taken |
+| `valueWeightedLooting.minFractionTaken` | Floor, so no looter is ever perfectly disciplined — a chad still lifts a good plate to sell |
+| `valueWeightedLooting.maxFractionTaken` | Ceiling, so something always survives |
 | `looterExtractedChancePercent` | Baseline chance the killer extracted, before competence |
 | `looterDiedBonusPercent` | Added to the return chance when they did not extract |
 | `traderModifierPercent` | Optional per-trader adjustment, by trader ID |

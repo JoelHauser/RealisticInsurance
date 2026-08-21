@@ -164,7 +164,12 @@ namespace RealisticInsurance.Patches
                 fractionTaken += (competence - 50d) * config.Greed.PerCompetencePoint.For(killerType);
             }
 
-            fractionTaken = Math.Clamp(fractionTaken, 0d, 1d);
+            // Never absolute in either direction: a chad still lifts a good gun to
+            // sell, and the greediest looter still leaves something.
+            fractionTaken = Math.Clamp(
+                fractionTaken,
+                config.ValueWeightedLooting.MinFractionTaken,
+                config.ValueWeightedLooting.MaxFractionTaken);
 
             // Keep the attachment-counting fallback consistent with the plan.
             _fallbackReturnChance = (1d - fractionTaken) * 100d;
