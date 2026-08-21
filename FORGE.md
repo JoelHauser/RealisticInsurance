@@ -1,64 +1,55 @@
-Insurance in SPT is a coin flip. Every insured item rolls against one flat number per trader — 85% at Prapor, 95% at Therapist — so every raid returns roughly the same middling fraction and nothing about the raid itself matters.
+Insurance in SPT is a coin flip. Every item you insure rolls against one fixed number for whichever trader you insured with, and that's the whole system. It doesn't matter whether a scav clipped you in the first minute or a boss stripped you bare — you get roughly the same middling handful of stuff back, every single time.
 
-**Realistic Insurance** replaces that with a model built from what actually happened to you: **who killed you**, **how good they were**, and **whether they got out with your gear**. Then it decides which specific items they walked off with, weighted by value — because a looter takes your armour and your rifle, not a random 15% of your inventory.
+**Realistic Insurance** decides what comes back based on what actually happened to you.
 
-::: warning
-This mod **replaces per-trader return chances entirely**, including any set by trader mods. Return chance is keyed to your killer, not to which trader you insured with. See the **Compatibility** section — this is deliberate, and there is a config option to give traders their character back.
-:::
+Someone killed you, looted you, and then either made it out of the raid or didn't. That's the idea. A geared PMC takes your rifle and leaves the rest. A scav grabs something shiny and then dies to a Gluhar guard, so your kit comes home anyway. A player scav takes everything that isn't nailed down.
+
+> **⚠️ Worth knowing up front** — this mod replaces the return chance for **every** trader, including custom traders from other mods. What you get back depends on who killed you, not who you insured with. There's a setting to give traders their own flavour back — see **Compatibility** below.
 
 ## How it works {.tabset}
 
 ### Who killed you
 
-Your killer is read from the post-raid data and sorted into a bucket, each with its own baseline return chance:
+Different killers, different odds:
 
-| Killer | Default return | Why |
+| Killed by | You get back | Because |
 |---|---|---|
-| PMC | 55% | takes what upgrades their kit |
-| Player scav | 45% | came in with nothing, leaves with everything |
-| AI scav | 75% | grabs a little, frequently dies with it |
-| Boss / guard / raider | 40% | thorough, and they are not leaving |
-| Nobody | 90% | bled out, fell, mine, disconnect — no one looted you |
+| PMC | ~55% | already geared, only takes upgrades |
+| Player scav | ~45% | came in with nothing, leaves with everything |
+| AI scav | ~75% | grabs a bit, usually dies with it |
+| Boss or raider | ~40% | thorough, and they aren't leaving |
+| Nobody | ~90% | bled out, fell, mine — nobody looted you |
 
-Player scavs are told apart from AI scavs properly. A real player on a scav run carries a player identity even though their in-raid name is a generated scav name, and they behave nothing like an AI scav.
+Player scavs and AI scavs get told apart properly, because they behave nothing alike.
+
+Every one of these numbers is yours to change.
 
 ### How good they were
 
-A level 50 PMC is not automatically good at the game, so level does not decide anything on its own. It sets the **mean** of a competence roll, made once per raid:
+Being high level doesn't make someone good at the game. So level nudges the odds here rather than deciding them.
 
-```
-mean       = competenceAtPivot + (level - pivotLevel) * competencePerLevel
-competence = clamp(Normal(mean, sigma), 0, 100)
-```
+Each raid, your killer gets rolled a rough skill rating. Their level shifts what's *likely*, but a level 45 can absolutely be worse than a level 10 — and about one raid in ten ignores level completely. The level 50 hatchling runner and the level 8 prodigy both exist.
 
-`sigma` controls how much level actually predicts — at the default of 22 a level 45 and a level 10 overlap constantly. On top of that, 10% of raids ignore level entirely and draw flat 0–100: the level 50 hatchling runner and the level 8 prodigy both exist.
+That rating does two things:
 
-Competence then does two things, and the second one flips sign depending on who they are:
+- **Getting out** — a better player is more likely to escape with your gear. If they die before extracting, your odds jump.
+- **How much they take** — and this one flips depending on who they are. A good PMC is already kitted, so they're *picky*. A good player scav came in with nothing, so they're *greedy*.
 
-- **Extraction** — a better looter is more likely to get out with your gear. If they die before extracting, your odds improve.
-- **Greed** — a skilled PMC is already kitted and takes *less*. A skilled player scav arrived with nothing and takes *more*.
+Nothing is ever guaranteed at either end. Even a fully-kitted chad will lift a good backpack or a nice plate to sell, and even the greediest looter leaves something behind.
 
-Neither end is ever absolute. Even a fully-kitted chad lifts a good plate or backpack to sell, and even the greediest looter leaves something behind.
+### What they take
 
-### What they took
+This is the part that makes it feel right.
 
-The important part: looting works in **whole kit items**, not inventory rows.
+Your gun and everything bolted to it counts as **one thing**. Same for your rig and the plates inside it. So you lose the rifle *with its scope and suppressor*, or the carrier *with its armour* — instead of a random scattering of screws and mags going missing while the gun somehow survives.
 
-A 53-item insurance package is usually only four or five real objects — a rifle and its seventeen attachments, a plate carrier and its plates and inserts, a helmet, a backpack. Each is priced *including* everything attached to it, and each gets its own roll weighted by that total value.
+Better gear is more likely to walk. Here's a real test raid, killed by a boss:
 
-So you lose your gun **with its scope and suppressor**, or your carrier **with its plates**, and the cheap items in your pockets survive. From a real test raid:
+**Gone** — a kitted SCAR-H, and an Osprey carrier loaded with Hesco plates. Around 1.4 million roubles.
 
-```
-killer=Boss, competence=81.9, extracted=True
-  -> target 43.9% | took 2/4 kit item(s) = 32/53 entries
+**Came back** — an SKS and a helmet.
 
-  LOST  FN SCAR-H 7.62x51 (35,604 RUB)      ...and all 17 attachments
-  LOST  CQC Osprey MK4A carrier (194,098 RUB) ...and both Hesco plates
-  kept  TOZ Simonov SKS 7.62x39 (80,371 RUB)
-  kept  Team Wendy EXFIL Helmet (8,514 RUB)
-```
-
-He took roughly 1.4 million roubles of rifle and armour, and walked past the SKS.
+He took the good stuff and walked straight past the rest. That's the point.
 
 {.endtabset}
 
@@ -66,86 +57,76 @@ He took roughly 1.4 million roubles of rifle and armour, and walked past the SKS
 
 ### Trader mods
 
-**Custom traders work without any configuration.** Return chance is keyed to your killer, not to the trader, so a modded trader needs no entry anywhere.
+**Custom traders just work.** No setup, no config entry, nothing to add anywhere. Install the trader, install this, done.
 
-::: warning
-The trade-off: if a trader mod sets its own insurance return rate, **this mod overrides it**. A custom trader advertising "95% return" will behave like every other trader.
-:::
+> **⚠️ The catch** — if a trader mod sets its own insurance return rate, this mod overrides it. A custom trader advertising "95% return!" will behave like everyone else.
 
-Their **return times and insurance prices are untouched** — a trader offering a 1–6 hour return still returns in 1–6 hours, and their price coefficients still apply. Only the survival chance is taken over.
+Their **return times and prices are left alone**. A trader with a 1–6 hour return still takes 1–6 hours, and still charges what they charge. It's only the odds of your gear surviving that get taken over.
 
-If you want a trader to feel distinctive again, give them a modifier:
+If you'd like a trader to feel special again, give them a bonus:
 
 ```json
 "traderModifierPercent": {
   "54cb50c76803fa8b248b4571": 0,
   "54cb57776803fa99248b456e": 10,
-  "690766de550bc322a810ea1e": 15
+  "put-the-custom-trader-id-here": 15
 }
 ```
 
-That is Prapor, Therapist, and a custom trader given +15% on top of whatever the killer-based model decided.
+That's Prapor unchanged, Therapist at +10%, and a custom trader at +15% on top of whatever the raid decided.
 
-::: information
-There is a bug in SPT itself where a modded trader that offers insurance without registering a return chance crashes the insurance run. This mod handles those traders instead of letting SPT throw, and names them in the server console at startup so you know which mod to report.
-:::
+> **ℹ️ Bonus fix** — some trader mods offer insurance without telling SPT what their return rate should be, which crashes the insurance run in vanilla SPT. This mod handles those traders instead of letting it break, and names them in the server console at startup so you know which mod to report it to.
 
-### Other insurance mods
+### Other mods
 
-Anything that changes **which items reach insurance** — insurance fraud style mods, mods that make dropped gear insurable — works fine. Those run before this mod sees the package.
+**Happy together** — anything that changes *what ends up insured*, like insurance fraud mods or mods that let you insure found gear. All of that happens before this mod gets involved.
 
-Anything that changes **the return chance itself** will conflict, since both are rewriting the same decision. Pick one.
+**Happy together** — anything that changes insurance *prices* or *timers*.
 
-Mods that change insurance **timing or cost** are unaffected.
+**Pick one** — another mod that changes the *return chance* itself. Two mods arguing over the same decision won't end well.
 
-### Requirements
+### Before you install
 
-::: error
-`simulateItemsBeingTaken` must be `true` in `SPT_Runtime/SPT_Data/configs/insurance.json`.
+**One requirement.** `simulateItemsBeingTaken` needs to be `true` in `SPT_Runtime/SPT_Data/configs/insurance.json`. It already is by default. If you've turned it off, SPT never removes anything from insurance at all, so this mod has nothing to do — and it'll warn you in the server console if it spots that.
 
-It is `true` by default. If you have set it to `false`, SPT never removes anything from insurance and this mod does nothing at all. The server console warns you at startup if it sees this.
-:::
+**Server mod only.** Nothing goes into BepInEx, and there's nothing to keep in sync when the game updates.
 
-Server mod only — there is no client plugin, so nothing to install into BepInEx and no version gate to worry about.
-
-Labs and the Labyrinth still return nothing, exactly as in vanilla SPT.
+**Labs and the Labyrinth** still return nothing, exactly as always.
 
 {.endtabset}
 
-## Configuration
+## Settings
 
-Everything lives in `config/config.json` inside the mod folder. Changes need a server restart.
+Everything lives in `config/config.json`. Edit it, restart the server.
 
-The dials most worth touching:
+The defaults are tuned and you don't have to touch any of this. But if you want to:
 
-| Key | Effect |
+| Setting | What it does |
 |---|---|
-| `baseReturnChancePercent.*` | Baseline return per killer type — the headline numbers |
-| `looterCompetence.sigma` | How much level predicts skill. Higher = less |
-| `looterCompetence.wildcardChancePercent` | Raids that ignore level entirely |
-| `greed.perCompetencePoint.*` | How strongly skill changes the amount taken, signed per killer |
-| `valueWeightedLooting.greedBias` | Price exponent when choosing what to take. `1` = proportional, `2` = strongly favours expensive gear |
-| `valueWeightedLooting.minFractionTaken` / `maxFractionTaken` | Floor and ceiling, so no outcome is ever absolute |
-| `logRolls` | Prints every decision and every item as `LOST` or `kept`. Off by default |
+| `baseReturnChancePercent` | The headline numbers — how much comes back, per killer |
+| `looterCompetence.sigma` | How much level matters. Bigger number = matters less |
+| `looterCompetence.wildcardChancePercent` | How often level gets ignored completely |
+| `greed.perCompetencePoint` | How strongly skill changes the *amount* someone takes |
+| `valueWeightedLooting.greedBias` | How much looters favour expensive gear. Higher = greedier |
+| `minFractionTaken` / `maxFractionTaken` | Keeps things from ever being all-or-nothing |
+| `logRolls` | Prints what happened and why to the server console. Off by default |
 
-Set `enabled: false` to leave SPT's vanilla behaviour completely untouched without uninstalling.
+Set `enabled` to `false` to switch the whole thing off without uninstalling it.
 
-::: information
-Return chance is decided **when the raid ends** and stored with the insurance package, so editing the config will not change insurance that is already in the post.
-:::
+> **ℹ️** What comes back is decided **the moment the raid ends**, then saved. Changing settings won't affect insurance that's already on its way to you.
 
-## Installation
+## Install
 
 1. Close the server.
-2. Extract the archive into your SPT folder. It contains `SPT_Runtime/user/mods/RealisticInsurance/`.
-3. Start the server. You should see `Realistic Insurance` in the mod list.
+2. Extract the archive into your SPT folder.
+3. Start the server — you should see **Realistic Insurance** in the mod list.
 
 ## Status
 
-**0.1.0 — working and tested, but young.**
+**0.1.0 — working and tested in game, but new.**
 
-Verified in a live raid: killer classification for PMCs, player scavs and bosses; the PMC level lookup; the competence and extraction rolls; the decision surviving a server restart; and the correct items coming back in the post.
+Tested in live raids: PMC, player scav and boss kills, and gear arriving correctly even after a server restart in between.
 
-Not yet watched running: AI scav kills, environmental deaths, packages insured before installing the mod, and modded traders. All are handled in code.
+Not yet seen in the wild: AI scav kills, dying to the map itself, and custom traders. All handled in the code, just not yet watched happening.
 
-Bug reports welcome — turn on `logRolls` and include the console output, which prints exactly what the mod decided and why.
+Found a bug? Switch on `logRolls`, grab the console output, and it'll tell you exactly what the mod decided and why.
