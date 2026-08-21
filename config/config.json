@@ -1,7 +1,7 @@
 {
   "enabled": true,
 
-  "// baseReturnChancePercent": "Chance an insured item is RETURNED, by what killed you.",
+  "// baseReturnChancePercent": "Baseline chance an insured item is RETURNED, by what killed you. Competence and the extraction roll move it from here.",
   "baseReturnChancePercent": {
     "pmc": 55,
     "playerScav": 70,
@@ -9,29 +9,41 @@
     "other": 90
   },
 
-  "// pmcLevelScaling": "Only applies when a PMC killed you AND their level is known. Higher-level PMCs are pickier (take less -> higher return) but extract more reliably; low-level PMCs grab everything but often die with it.",
-  "pmcLevelScaling": {
+  "// looterCompetence": "How good was this particular looter? Rolled ONCE per raid on 0-100. Level only sets the MEAN - sigma decides how much level actually predicts, so a high-level killer is often no better than a low-level one.",
+  "looterCompetence": {
     "enabled": true,
+    "sigma": 22,
+    "wildcardChancePercent": 10,
     "pivotLevel": 25,
-    "returnChancePerLevel": 0.6,
-    "extractChancePerLevel": 1.0,
-    "maxReturnAdjustPercent": 20,
-    "maxExtractAdjustPercent": 30
+    "competenceAtPivot": 50,
+    "competencePerLevel": 1.2,
+    "meanWhenScav": 35,
+    "meanWhenBoss": 70,
+    "meanWhenOther": 50,
+    "returnPerCompetencePoint": 0.9,
+    "extractPerCompetencePoint": 0.6
   },
 
-  "// looterExtractedChancePercent": "Chance the killer survived and extracted with your gear. Rolled ONCE per raid, not per item.",
+  "// valueWeightedLooting": "Decide how MANY items were taken once per raid, then pick WHICH ones weighted by price. This is what stops every raid returning the same middling fraction.",
+  "valueWeightedLooting": {
+    "enabled": true,
+    "greedBias": 2.0,
+    "countJitter": 0.15
+  },
+
+  "// looterExtractedChancePercent": "Baseline chance the killer survived and extracted with your gear, before competence is applied.",
   "looterExtractedChancePercent": 65,
 
-  "// looterDiedBonusPercent": "Added to the base chance when the killer did NOT extract. Result is clamped to 0-100.",
+  "// looterDiedBonusPercent": "Added to the return chance when the killer did NOT extract.",
   "looterDiedBonusPercent": 25,
 
-  "// traderModifierPercent": "Optional per-trader adjustment, added after the above. Prapor / Therapist.",
+  "// traderModifierPercent": "Optional per-trader adjustment. Prapor / Therapist.",
   "traderModifierPercent": {
     "54cb50c76803fa8b248b4571": 0,
     "54cb57776803fa99248b456e": 10
   },
 
-  "// legacyPackageBehaviour": "What to do with insurance packages created before this mod was installed: 'spt' = use SPT's returnChancePercent, or 'other' = treat as the 'other' bucket.",
+  "// legacyPackageBehaviour": "Packages insured before this mod was installed: 'spt' = use SPT's flat chance, 'other' = treat as the 'other' bucket.",
   "legacyPackageBehaviour": "spt",
 
   "logRolls": false

@@ -73,18 +73,45 @@ namespace RealisticInsurance.Patches
                 killerLevel = _botCache.GetBotById(request?.Results?.KillerId)?.Level;
             }
 
-            var extractChance = config.LooterExtractedChancePercent;
-            if (killerLevel.HasValue && config.PmcLevelScaling.Enabled)
+            var comp = config.LooterCompetence;
+
+            // Mean competence: level is only a hint, and only PMCs have one.
+            double mean = killerType switch
             {
-                extractChance += config.PmcLevelScaling.ExtractAdjustFor(killerLevel.Value);
+                KillerType.PlayerScav => comp.MeanWhenScav,
+                KillerType.Boss => comp.MeanWhenBoss,
+                KillerType.Pmc => killerLevel.HasValue ? comp.MeanForLevel(killerLevel.Value) : comp.CompetenceAtPivot,
+                _ => comp.MeanWhenOther
+            };
+
+            // Wildcard raids ignore level completely - the level 50 hatchling runner
+            // and the level 8 prodigy both exist.
+            var wildcard = comp.Enabled && _randomUtil.GetChance100(comp.WildcardChancePercent);
+
+            double competence;
+            if (!comp.Enabled)
+            {
+                competence = mean;
+            }
+            else if (wildcard)
+            {
+                competence = _randomUtil.GetDouble(0d, 100d);
+            }
+            else
+            {
+                competence = Math.Clamp(_randomUtil.GetNormallyDistributedRandomNumber(mean, comp.Sigma), 0d, 100d);
             }
 
-            extractChance = Math.Clamp(extractChance, 0d, 100d);
+            var extractChance = Math.Clamp(
+                config.LooterExtractedChancePercent + (competence - 50d) * comp.ExtractPerCompetencePoint,
+                0d, 100d);
 
             var ctx = new KillerContext
             {
                 Type = killerType,
                 KillerLevel = killerLevel,
+                Competence = competence,
+                Wildcard = wildcard,
                 LooterExtracted = _randomUtil.GetChance100(extractChance)
             };
 
@@ -92,7 +119,7 @@ namespace RealisticInsurance.Patches
 
             if (config.LogRolls)
             {
-                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
+                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, competence={competence:0.#}{(wildcard ? " (WILDCARD)" : "")}, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
             }
         }
     }
@@ -149,6 +176,8 @@ namespace RealisticInsurance.Patches
                 package.ExtensionData ??= new Dictionary<string?, object?>();
                 package.ExtensionData[KillerContext.ExtKeyType] = ctx.Type.ToString();
                 package.ExtensionData[KillerContext.ExtKeyExtracted] = ctx.LooterExtracted;
+                package.ExtensionData[KillerContext.ExtKeyCompetence] = ctx.Competence;
+                package.ExtensionData[KillerContext.ExtKeyWildcard] = ctx.Wildcard;
                 if (ctx.KillerLevel.HasValue)
                 {
                     package.ExtensionData[KillerContext.ExtKeyLevel] = ctx.KillerLevel.Value;

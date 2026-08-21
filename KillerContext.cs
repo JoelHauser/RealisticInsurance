@@ -16,10 +16,18 @@ namespace RealisticInsurance
         /// <summary>Killer's level, or null when unknown (scavs, bosses, cache miss).</summary>
         public int? KillerLevel { get; set; }
 
+        /// <summary>0-100, rolled once per raid. Level only sets its mean.</summary>
+        public double Competence { get; set; } = 50;
+
+        /// <summary>True when this raid's competence ignored level entirely.</summary>
+        public bool Wildcard { get; set; }
+
         // Stamped into Insurance.ExtensionData so it persists in profile.json.
         public const string ExtKeyType = "riKillerType";
         public const string ExtKeyExtracted = "riLooterExtracted";
         public const string ExtKeyLevel = "riKillerLevel";
+        public const string ExtKeyCompetence = "riCompetence";
+        public const string ExtKeyWildcard = "riWildcard";
 
         /// <summary>
         /// Classify from the post-raid aggressor. Side is the reliable signal: EFT
