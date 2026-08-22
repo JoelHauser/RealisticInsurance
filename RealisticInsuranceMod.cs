@@ -4,6 +4,7 @@ using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Models.Spt.Config;
+using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Models.Utils;
 using RealisticInsurance.Patches;
@@ -13,7 +14,9 @@ namespace RealisticInsurance
     [Injectable(TypePriority = OnLoadOrder.PostSptModLoader)]
     public class RealisticInsuranceMod(
         ModHelper modHelper,
-        InsuranceConfig insuranceConfig,
+#pragma warning disable CS0618 // ConfigServer is the 4.0 way; 4.1 injects configs directly
+        ConfigServer configServer,
+#pragma warning restore CS0618
         DatabaseService databaseService,
         // 4.1 collects patches as IEnumerable<IRuntimePatch>; that interface does not
         // exist in 4.0, where AbstractPatch implements nothing. The patches are
@@ -28,6 +31,12 @@ namespace RealisticInsurance
 
         public Task OnLoad()
         {
+            // 4.1 injects config records directly; 4.0 has no DI registration for
+            // them, so InsuranceConfig comes from ConfigServer.
+#pragma warning disable CS0618
+            var insuranceConfig = configServer.GetConfig<InsuranceConfig>();
+#pragma warning restore CS0618
+
             var path = Path.Combine(modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly()), "config");
             Config = modHelper.GetJsonDataFromFile<RealisticInsuranceConfig>(path, "config.json");
 

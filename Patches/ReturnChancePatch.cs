@@ -8,6 +8,7 @@ using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
 
@@ -384,11 +385,15 @@ namespace RealisticInsurance.Patches
         private static RandomUtil _randomUtil = null!;
         private static InsuranceConfig _insuranceConfig = null!;
 
-        public ReturnChancePatch(RandomUtil randomUtil, InsuranceConfig insuranceConfig)
+        // 4.1 resolves config records straight from DI; 4.0 does not register them,
+        // so they come from ConfigServer instead.
+#pragma warning disable CS0618 // ConfigServer is the 4.0 way; 4.1 injects configs directly
+        public ReturnChancePatch(RandomUtil randomUtil, ConfigServer configServer)
         {
             _randomUtil = randomUtil;
-            _insuranceConfig = insuranceConfig;
+            _insuranceConfig = configServer.GetConfig<InsuranceConfig>();
         }
+#pragma warning restore CS0618
 
         /// <summary>
         /// SPT indexes insuranceConfig.ReturnChancePercent[traderId] directly, having

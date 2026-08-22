@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.0.9</Version>
+    <Version>0.0.10</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>

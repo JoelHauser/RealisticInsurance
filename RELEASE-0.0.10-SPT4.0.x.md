@@ -1,3 +1,9 @@
+**0.0.10 fixes a crash in 0.0.9 that stopped the server on startup.** If you tried 0.0.9, this replaces it.
+
+0.0.9 asked the server for its insurance settings the way SPT 4.1 does. 4.0 supplies them by a different route, so the server could not construct the mod and shut down with "Unable to resolve service for type ... InsuranceConfig". Nothing else changed, and no saves or profiles were affected — the server stopped before the mod ever ran.
+
+---
+
 **This is the SPT 4.0.x build.** If you are on 4.1.x, take the 4.1 file instead — the two are not interchangeable and the wrong one will not load at all.
 
 Nothing about how the mod behaves has changed. What comes back is still decided by who killed you, how good they were, and whether they got out of the raid with your gear, and the settings file is identical to the 4.1 release. This build exists only because 4.0 and 4.1 need separately compiled versions.
