@@ -8,12 +8,14 @@ Server mod for SPT 4.0.x (built and verified against 4.0.13).
 
 ## Status
 
-**0.1.0 — verified working in game, but young.**
+**0.0.9 — the 4.0.x backport. Builds against 4.0.13, not yet run on a 4.0 server.**
 
-The full pipeline has been observed end to end on a live server: the raid-end
-capture, killer classification, the PMC level lookup, persistence of that
-context across a server restart, the per-package plan, the per-item verdicts,
-and the returned mail.
+The full pipeline has been observed end to end on a live **4.1** server: the
+raid-end capture, killer classification, the PMC level lookup, persistence of
+that context across a server restart, the per-package plan, the per-item
+verdicts, and the returned mail. Every hook point it relies on has an identical
+signature on 4.0, so the same behaviour is expected here - but expected is not
+observed, and nobody has yet run this build on 4.0.
 
 Observed working, per killer type:
 
