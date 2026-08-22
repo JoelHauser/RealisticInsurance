@@ -11,7 +11,7 @@ namespace RealisticInsurance
         public override string Name { get; init; } = "Realistic Insurance";
         public override string Author { get; init; } = "JoelHauser";
         public override List<string>? Contributors { get; init; }
-        public override SemanticVersioning.Version Version { get; init; } = new("0.0.10");
+        public override SemanticVersioning.Version Version { get; init; } = new("0.0.9");
         public override SemanticVersioning.Range SptVersion { get; init; } = new("~4.0.0");
         public override bool? IsBundleMod { get; init; } = false;
         public override List<string>? Incompatibilities { get; init; }
