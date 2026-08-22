@@ -4,7 +4,7 @@ namespace RealisticInsurance
 {
     public record RealisticInsuranceMetadata : IModMetadata
     {
-        public string ModGuid { get; init; } = "com.joelhauser.realisticinsurance";
+        public string ModGuid { get; init; } = "com.mybutthasarash.realisticinsurance";
         public string Name { get; init; } = "Realistic Insurance";
         public string Author { get; init; } = "JoelHauser";
         public List<string>? Contributors { get; init; }
