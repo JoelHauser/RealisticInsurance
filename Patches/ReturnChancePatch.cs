@@ -1,5 +1,5 @@
 using System.Reflection;
-using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Controllers;
@@ -7,8 +7,8 @@ using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Spt.Config;
-using SPTarkov.Server.Core.Helpers.Items;
-using SPTarkov.Server.Core.Services.Ragfair;
+using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
 
 namespace RealisticInsurance.Patches
@@ -23,7 +23,7 @@ namespace RealisticInsurance.Patches
     /// spread (some raids you are cleaned out, some barely touched) and the shape
     /// (they take the expensive things first).
     /// </summary>
-    [Injectable(InjectionType.Transient, int.MaxValue)]
+    [Injectable(InjectionType.Transient, TypePriority = int.MaxValue)]
     public class PackageContextPatch : AbstractPatch
     {
         private static RagfairPriceService _priceService = null!;
@@ -378,7 +378,7 @@ namespace RealisticInsurance.Patches
     /// <summary>
     /// Answers SPT's per-item question from the plan built above.
     /// </summary>
-    [Injectable(InjectionType.Transient, int.MaxValue)]
+    [Injectable(InjectionType.Transient, TypePriority = int.MaxValue)]
     public class ReturnChancePatch : AbstractPatch
     {
         private static RandomUtil _randomUtil = null!;

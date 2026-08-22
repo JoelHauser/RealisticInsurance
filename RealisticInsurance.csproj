@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
@@ -21,12 +21,12 @@
   <PropertyGroup>
     <SPTPath Condition="'$(SPTPath)' == ''">$(SPT_PATH)</SPTPath>
     <SPTPath Condition="'$(SPTPath)' != ''">$(SPTPath.TrimEnd('\'))</SPTPath>
-    <SPTRuntimePath>$(SPTPath)\SPT_Runtime</SPTRuntimePath>
+    <SPTRuntimePath>$(SPTPath)\SPT</SPTRuntimePath>
   </PropertyGroup>
 
   <Target Name="ValidateSPTPath" BeforeTargets="BeforeBuild">
     <Error Condition="'$(SPTPath)' == ''" Text="SPTPath is not set. e.g. -p:SPTPath=H:\SPT4.1.X" />
-    <Error Condition="!Exists('$(SPTRuntimePath)\SPTarkov.Server.Core.dll')" Text="SPTPath ('$(SPTPath)') does not contain SPT_Runtime\SPTarkov.Server.Core.dll" />
+    <Error Condition="!Exists('$(SPTRuntimePath)\SPTarkov.Server.Core.dll')" Text="SPTPath ('$(SPTPath)') does not contain SPT\SPTarkov.Server.Core.dll" />
   </Target>
 
   <ItemGroup>
@@ -43,7 +43,7 @@
 
   <Target Name="DeployToSPT" AfterTargets="Build" Condition="'$(DeployToSPT)' == 'true'">
     <PropertyGroup>
-      <ModDir>$(SPTPath)\SPT_Runtime\user\mods\RealisticInsurance</ModDir>
+      <ModDir>$(SPTPath)\SPT\user\mods\RealisticInsurance</ModDir>
     </PropertyGroup>
     <MakeDir Directories="$(ModDir)\config" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModDir)" />
@@ -51,15 +51,15 @@
   </Target>
 
   <!--
-    Drop-in archive. Root is SPT_Runtime\ so the zip extracts straight over the
-    SPT install folder (4.1 renamed SPT\ to SPT_Runtime\).
+    Drop-in archive. Root is SPT\ so the zip extracts straight over the
+    SPT install folder (4.1 renamed SPT\ to SPT\).
       dotnet build -c Release -p:SPTPath="H:\SPT4.1.X" -t:PackageRelease
   -->
   <Target Name="PackageRelease" DependsOnTargets="Build">
     <PropertyGroup>
       <StagingDir>$(MSBuildProjectDirectory)\dist\staging</StagingDir>
-      <ModStageDir>$(StagingDir)\SPT_Runtime\user\mods\RealisticInsurance</ModStageDir>
-      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.1.x.zip</ZipPath>
+      <ModStageDir>$(StagingDir)\SPT\user\mods\RealisticInsurance</ModStageDir>
+      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.0.x.zip</ZipPath>
     </PropertyGroup>
     <RemoveDir Directories="$(StagingDir)" />
     <MakeDir Directories="$(ModStageDir)\config" />

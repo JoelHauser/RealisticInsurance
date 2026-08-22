@@ -1,15 +1,14 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
-using SPTarkov.Common.Models.Logging;
+using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Match;
 using SPTarkov.Server.Core.Servers;
-using SPTarkov.Server.Core.Services.Bot;
-using SPTarkov.Server.Core.Services.InRaid;
+using SPTarkov.Server.Core.Services;
 using SPTarkov.Server.Core.Utils;
 
 namespace RealisticInsurance.Patches
@@ -30,7 +29,7 @@ namespace RealisticInsurance.Patches
     /// Only pmcUSEC / pmcBEAR are cached by SPT, so levels resolve for PMC killers
     /// only. Scav and boss kills fall back to their flat config buckets.
     /// </summary>
-    [Injectable(InjectionType.Transient, int.MaxValue)]
+    [Injectable(InjectionType.Transient, TypePriority = int.MaxValue)]
     public class CaptureKillerPatch : AbstractPatch
     {
         private static MatchBotDetailsCacheService _botCache = null!;
@@ -137,7 +136,7 @@ namespace RealisticInsurance.Patches
     /// profile.json and survives the server restart that can happen before the
     /// return timer fires.
     /// </summary>
-    [Injectable(InjectionType.Transient, int.MaxValue)]
+    [Injectable(InjectionType.Transient, TypePriority = int.MaxValue)]
     public class StampPackagesPatch : AbstractPatch
     {
         private static SaveServer _saveServer = null!;
@@ -146,7 +145,7 @@ namespace RealisticInsurance.Patches
 
         protected override MethodBase? GetTargetMethod()
         {
-            return typeof(SPTarkov.Server.Core.Services.Commerce.InsuranceService)
+            return typeof(SPTarkov.Server.Core.Services.InsuranceService)
                 .GetMethod("StartPostRaidInsuranceLostProcess", BindingFlags.Instance | BindingFlags.Public);
         }
 

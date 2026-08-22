@@ -4,7 +4,7 @@ Replaces SPT's flat per-trader insurance return chance with a model built from
 **who killed you**, **how good they were**, and **whether they got out with your
 gear** — then decides which specific items they walked off with by value.
 
-Server mod for SPT 4.1.x.
+Server mod for SPT 4.0.x (built and verified against 4.0.13).
 
 ## Status
 
@@ -230,7 +230,7 @@ reached from both the regular-item and attachment paths.
 ## Testing it yourself
 
 Insurance returns are slow by design, so to watch the mod work without waiting
-overnight, temporarily set in `SPT_Runtime/SPT_Data/configs/insurance.json`:
+overnight, temporarily set in `SPT/SPT_Data/configs/insurance.json`:
 
 ```json
 "returnTimeOverrideSeconds": 60,
@@ -249,11 +249,11 @@ speed up insurance that is already pending.
 ## Building
 
 ```
-dotnet build -c Release -p:SPTPath="H:\SPT4.1.X"
+dotnet build -c Release -p:SPTPath="H:\SPT2026"
 ```
 
 Add `-p:DeployToSPT=true` to copy straight into
-`SPT_Runtime\user\mods\RealisticInsurance`.
+`SPT\user\mods\RealisticInsurance`.
 
-Compiled against the assemblies shipped in the install rather than the
-`SPTarkov.*` NuGet packages, which are still on 4.1.2.
+Compiled against the assemblies shipped in the 4.0.x install. Requires a
+.NET 9 SDK - the 4.1.x branch targets .NET 10 and will not build here.
