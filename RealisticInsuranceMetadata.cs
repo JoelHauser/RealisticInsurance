@@ -7,7 +7,7 @@ namespace RealisticInsurance
     // flag is called IsBundleMod here, and is nullable.
     public record RealisticInsuranceMetadata : AbstractModMetadata
     {
-        public override string ModGuid { get; init; } = "com.joelhauser.realisticinsurance";
+        public override string ModGuid { get; init; } = "com.mybutthasarash.realisticinsurance";
         public override string Name { get; init; } = "Realistic Insurance";
         public override string Author { get; init; } = "JoelHauser";
         public override List<string>? Contributors { get; init; }
