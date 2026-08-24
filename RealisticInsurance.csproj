@@ -58,7 +58,13 @@
     </PropertyGroup>
     <MakeDir Directories="$(ModDir)\config" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModDir)" />
-    <Copy SourceFiles="config\config.json" DestinationFolder="$(ModDir)\config" />
+    <!--
+      Only seed the config; never overwrite one that is already there. A deploy
+      silently replacing the installed config resets whatever the player tuned -
+      it clobbered a logRolls setting mid-test once, which made a working feature
+      look broken because its logging had vanished.
+    -->
+    <Copy SourceFiles="config\config.json" DestinationFolder="$(ModDir)\config" Condition="!Exists('$(ModDir)\config\config.json')" />
   </Target>
 
   <!--
