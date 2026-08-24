@@ -30,6 +30,14 @@ namespace RealisticInsurance
         public const string ExtKeyWildcard = "riWildcard";
 
         /// <summary>
+        /// Ids of items in this package that were NOT on the corpse - dropped or
+        /// stashed before death, so the killer never saw them. Stamped rather
+        /// than looked up later, because the package can outlive a server
+        /// restart and the client only reports once.
+        /// </summary>
+        public const string ExtKeyDropped = "riDroppedIds";
+
+        /// <summary>
         /// Classify from the post-raid aggressor. Side is the reliable signal: EFT
         /// reports Usec/Bear for any PMC (AI or human) and Savage for any scav.
         /// Role is only used to separate bosses out of the scav bucket.

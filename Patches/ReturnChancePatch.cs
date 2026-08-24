@@ -186,9 +186,65 @@ namespace RealisticInsurance.Patches
                 fractionTaken *= 1d + randomUtil.GetDouble(-jitter, jitter);
             }
 
-            var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * items.Count);
-            _taken = SelectRoots(items, targetEntries, config.ValueWeightedLooting.GreedBias,
-                priceService, randomUtil, out var rootsTaken, out var rootsTotal);
+            // Items the client reported as NOT on the body get judged separately.
+            // A helmet dropped twenty minutes before death was never seen by the
+            // killer, so their greed and competence should not touch it.
+            var droppedIds = ReadStringSet(ext, KillerContext.ExtKeyDropped);
+
+            var onCorpse = items;
+            List<Item>? dropped = null;
+
+            if (droppedIds is not null && droppedIds.Count > 0)
+            {
+                // Partitioning by each item's own id is enough: a root and its
+                // children leave the inventory together, so they are either all
+                // in the dropped set or none of them are.
+                onCorpse = items.Where(i => !droppedIds.Contains(i.Id.ToString())).ToList();
+                dropped = items.Where(i => droppedIds.Contains(i.Id.ToString())).ToList();
+            }
+
+            var rootsTaken = 0;
+            var rootsTotal = 0;
+            _taken = new HashSet<MongoId>();
+
+            if (onCorpse.Count > 0)
+            {
+                var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * onCorpse.Count);
+                var selectedOnCorpse = SelectRoots(onCorpse, targetEntries, config.ValueWeightedLooting.GreedBias,
+                    priceService, randomUtil, out var takenA, out var totalA);
+                foreach (var id in selectedOnCorpse)
+                {
+                    _taken.Add(id);
+                }
+                rootsTaken += takenA;
+                rootsTotal += totalA;
+            }
+
+            if (dropped is { Count: > 0 })
+            {
+                // The "other" bucket, and deliberately without the looter-died
+                // bonus. Nobody looted this, but a bag left in the open can still
+                // be stumbled on, so it should not be a guaranteed return.
+                var droppedFraction = Math.Clamp(
+                    1d - (config.BaseReturnChancePercent.Other / 100d),
+                    config.ValueWeightedLooting.MinFractionTaken,
+                    config.ValueWeightedLooting.MaxFractionTaken);
+
+                var targetDropped = (int)Math.Round(droppedFraction * dropped.Count);
+                var selectedDropped = SelectRoots(dropped, targetDropped, config.ValueWeightedLooting.GreedBias,
+                    priceService, randomUtil, out var takenB, out var totalB);
+                foreach (var id in selectedDropped)
+                {
+                    _taken.Add(id);
+                }
+                rootsTaken += takenB;
+                rootsTotal += totalB;
+
+                if (config.LogRolls)
+                {
+                    logger.Info($"[RealisticInsurance]   {dropped.Count} entr(ies) were dropped before death -> judged as '{KillerType.Other}' at {config.BaseReturnChancePercent.Other}% return, not by the killer");
+                }
+            }
 
             if (config.LogRolls)
             {
@@ -341,6 +397,45 @@ namespace RealisticInsurance.Patches
             }
 
             return chosen;
+        }
+
+        /// <summary>
+        /// Reads a stamped list of ids back out. It round-trips through the
+        /// profile as JSON, so by the time it returns it is a JsonElement array
+        /// rather than the List&lt;string&gt; that went in.
+        /// </summary>
+        private static HashSet<string>? ReadStringSet(IDictionary<string?, object?>? ext, string key)
+        {
+            if (ext is null || !ext.TryGetValue(key, out var raw) || raw is null)
+            {
+                return null;
+            }
+
+            var set = new HashSet<string>(StringComparer.Ordinal);
+
+            switch (raw)
+            {
+                case IEnumerable<string> strings:
+                    foreach (var s in strings) set.Add(s);
+                    break;
+                case System.Text.Json.JsonElement element
+                    when element.ValueKind == System.Text.Json.JsonValueKind.Array:
+                    foreach (var e in element.EnumerateArray())
+                    {
+                        var v = e.GetString();
+                        if (v is not null) set.Add(v);
+                    }
+                    break;
+                case System.Collections.IEnumerable loose:
+                    foreach (var o in loose)
+                    {
+                        var v = o?.ToString();
+                        if (!string.IsNullOrEmpty(v)) set.Add(v!);
+                    }
+                    break;
+            }
+
+            return set.Count > 0 ? set : null;
         }
 
         private static double ReadDouble(IDictionary<string?, object?> ext, string key, double fallback)

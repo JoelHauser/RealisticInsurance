@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.4.0</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -23,6 +23,17 @@
     <SPTPath Condition="'$(SPTPath)' != ''">$(SPTPath.TrimEnd('\'))</SPTPath>
     <SPTRuntimePath>$(SPTPath)\SPT_Runtime</SPTRuntimePath>
   </PropertyGroup>
+
+  <!--
+    The client plugin lives in a subfolder and is its own project. Without this
+    the SDK's recursive glob compiles its sources AND its generated obj files
+    into the server mod, which fails on duplicate assembly attributes.
+  -->
+  <ItemGroup>
+    <Compile Remove="client\**" />
+    <None Remove="client\**" />
+    <EmbeddedResource Remove="client\**" />
+  </ItemGroup>
 
   <Target Name="ValidateSPTPath" BeforeTargets="BeforeBuild">
     <Error Condition="'$(SPTPath)' == ''" Text="SPTPath is not set. e.g. -p:SPTPath=H:\SPT4.1.X" />
