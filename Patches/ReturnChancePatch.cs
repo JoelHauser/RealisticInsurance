@@ -69,6 +69,13 @@ namespace RealisticInsurance.Patches
     {
         [ThreadStatic] private static HashSet<MongoId>? _taken;
         [ThreadStatic] private static double _fallbackReturnChance;
+
+        /// <summary>
+        /// Ids the player dropped before dying. These are not judged by this mod
+        /// at all - they are handed back to SPT so the trader's own return chance
+        /// applies, which is what a player expects for gear no one looted.
+        /// </summary>
+        [ThreadStatic] private static HashSet<string>? _dropped;
         [ThreadStatic] private static bool _active;
         [ThreadStatic] private static bool _legacy;
 
@@ -76,6 +83,11 @@ namespace RealisticInsurance.Patches
         internal static bool Legacy => _legacy;
         internal static double FallbackReturnChance => _fallbackReturnChance;
         internal static bool HasPlan => _taken is not null;
+
+        internal static bool IsDropped(MongoId id)
+        {
+            return _dropped is not null && _dropped.Contains(id.ToString());
+        }
 
         internal static bool WasTaken(MongoId id)
         {
@@ -92,6 +104,7 @@ namespace RealisticInsurance.Patches
             // being destroyed. Previously this kept the last package's value, and a
             // stale 0 here deletes an entire package.
             _fallbackReturnChance = 100d;
+            _dropped = null;
         }
 
         internal static void Build(
@@ -222,27 +235,20 @@ namespace RealisticInsurance.Patches
 
             if (dropped is { Count: > 0 })
             {
-                // The "other" bucket, and deliberately without the looter-died
-                // bonus. Nobody looted this, but a bag left in the open can still
-                // be stumbled on, so it should not be a guaranteed return.
-                var droppedFraction = Math.Clamp(
-                    1d - (config.BaseReturnChancePercent.Other / 100d),
-                    config.ValueWeightedLooting.MinFractionTaken,
-                    config.ValueWeightedLooting.MaxFractionTaken);
-
-                var targetDropped = (int)Math.Round(droppedFraction * dropped.Count);
-                var selectedDropped = SelectRoots(dropped, targetDropped, config.ValueWeightedLooting.GreedBias,
-                    priceService, randomUtil, out var takenB, out var totalB);
-                foreach (var id in selectedDropped)
+                // Not judged here at all. Recording the ids makes the per-item
+                // patch hand these straight back to SPT, so the trader's own
+                // return chance applies - 85% at Prapor, 95% at Therapist. The
+                // killer never saw them, so none of this mod's reasoning about
+                // who they were or how greedy they felt should touch them.
+                _dropped = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var item in dropped)
                 {
-                    _taken.Add(id);
+                    _dropped.Add(item.Id.ToString());
                 }
-                rootsTaken += takenB;
-                rootsTotal += totalB;
 
                 if (config.LogRolls)
                 {
-                    logger.Info($"[RealisticInsurance]   {dropped.Count} entr(ies) were dropped before death -> judged as '{KillerType.Other}' at {config.BaseReturnChancePercent.Other}% return, not by the killer");
+                    logger.Info($"[RealisticInsurance]   {dropped.Count} entr(ies) were dropped before death -> handed to SPT for the trader's own return chance, not judged by the killer");
                 }
             }
 
@@ -522,6 +528,23 @@ namespace RealisticInsurance.Patches
                 // Unknown (modded) trader: answer it ourselves rather than crash.
                 var fallbackChance = config?.BaseReturnChancePercent.Other ?? 90d;
                 __result = (_randomUtil.GetInt(0, 9999) / 100) >= fallbackChance;
+                return false;
+            }
+
+            // Dropped before death: SPT's flat trader chance, exactly as if this
+            // mod were not installed. Checked before the plan, because the plan
+            // deliberately holds no verdict for these.
+            if (insuredItem is not null && RaidLootPlan.IsDropped(insuredItem.Id))
+            {
+                if (SptCanHandle(traderId))
+                {
+                    return true;
+                }
+
+                // Modded trader SPT cannot price. Answer it here rather than let
+                // it throw, using the same "nobody looted it" rate.
+                var droppedChance = config?.BaseReturnChancePercent.Other ?? 90d;
+                __result = (_randomUtil.GetInt(0, 9999) / 100) >= droppedChance;
                 return false;
             }
 
