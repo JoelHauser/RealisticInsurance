@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.0.9</Version>
+    <Version>0.0.91</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -23,6 +23,18 @@
     <SPTPath Condition="'$(SPTPath)' != ''">$(SPTPath.TrimEnd('\'))</SPTPath>
     <SPTRuntimePath>$(SPTPath)\SPT</SPTRuntimePath>
   </PropertyGroup>
+
+  <!--
+    The 4.1 line keeps a client plugin in client/. It is not part of this
+    backport, but the folder can still be sitting there after a branch switch,
+    and the SDK glob would compile its generated obj files into this assembly
+    and fail on duplicate attributes.
+  -->
+  <ItemGroup>
+    <Compile Remove="client\\" />
+    <None Remove="client\\" />
+    <EmbeddedResource Remove="client\\" />
+  </ItemGroup>
 
   <Target Name="ValidateSPTPath" BeforeTargets="BeforeBuild">
     <Error Condition="'$(SPTPath)' == ''" Text="SPTPath is not set. e.g. -p:SPTPath=H:\SPT4.1.X" />
@@ -59,7 +71,7 @@
     <PropertyGroup>
       <StagingDir>$(MSBuildProjectDirectory)\dist\staging</StagingDir>
       <ModStageDir>$(StagingDir)\SPT\user\mods\RealisticInsurance</ModStageDir>
-      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.0.x.zip</ZipPath>
+      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.0.zip</ZipPath>
     </PropertyGroup>
     <RemoveDir Directories="$(StagingDir)" />
     <MakeDir Directories="$(ModStageDir)\config" />
