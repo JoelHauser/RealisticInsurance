@@ -29,7 +29,7 @@ namespace RealisticInsuranceClient
     {
         public const string PluginGuid = "com.mybutthasarash.realisticinsurance.client";
         public const string PluginName = "Realistic Insurance (client)";
-        public const string PluginVersion = "0.4.0";
+        public const string PluginVersion = "0.2.0";
 
         internal static ManualLogSource Log;
 

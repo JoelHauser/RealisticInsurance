@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.4.0</Version>
+    <Version>0.2.0</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -76,7 +76,7 @@
     <PropertyGroup>
       <StagingDir>$(MSBuildProjectDirectory)\dist\staging</StagingDir>
       <ModStageDir>$(StagingDir)\SPT_Runtime\user\mods\RealisticInsurance</ModStageDir>
-      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.1.x.zip</ZipPath>
+      <ZipPath>$(MSBuildProjectDirectory)\dist\RealisticInsurance-$(Version)-SPT4.1.zip</ZipPath>
     </PropertyGroup>
     <RemoveDir Directories="$(StagingDir)" />
     <MakeDir Directories="$(ModStageDir)\config" />
@@ -84,6 +84,19 @@
     <Copy SourceFiles="config\config.json" DestinationFolder="$(ModStageDir)\config" />
     <Copy SourceFiles="README.md" DestinationFolder="$(ModStageDir)" />
     <Copy SourceFiles="LICENSE" DestinationFolder="$(ModStageDir)" />
+
+    <!--
+      The client plugin ships alongside the server mod. It reports which gear
+      was still on the body at death; without it nothing is ever marked as
+      dropped and the mod quietly behaves as it did before.
+    -->
+    <ItemGroup>
+      <ClientPlugin Include="client\bin\Release\RealisticInsuranceClient.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(StagingDir)\BepInEx\plugins\RealisticInsurance" Condition="'@(ClientPlugin)' != ''" />
+    <Copy SourceFiles="@(ClientPlugin)" DestinationFolder="$(StagingDir)\BepInEx\plugins\RealisticInsurance" Condition="'@(ClientPlugin)' != ''" />
+    <Warning Text="RealisticInsuranceClient.dll not found - build client first, or this archive is server-only." Condition="'@(ClientPlugin)' == ''" />
+
     <Delete Files="$(ZipPath)" />
     <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
     <RemoveDir Directories="$(StagingDir)" />
