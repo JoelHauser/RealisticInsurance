@@ -27,7 +27,11 @@ namespace RealisticInsuranceClient
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class RealisticInsurancePlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "com.mybutthasarash.realisticinsurance.client";
+        // Deliberately identical to the server mod's ModGuid. The Forge checks
+        // that both halves declare the registered GUID, and BepInEx keeps its
+        // own plugin registry, so there is nothing here for the server mod to
+        // collide with.
+        public const string PluginGuid = "com.mybutthasarash.realisticinsurance";
         public const string PluginName = "Realistic Insurance (client)";
         public const string PluginVersion = "0.0.92";
 
