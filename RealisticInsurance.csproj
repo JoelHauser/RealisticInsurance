@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.0.91</Version>
+    <Version>0.0.92</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -31,9 +31,9 @@
     and fail on duplicate attributes.
   -->
   <ItemGroup>
-    <Compile Remove="client\\" />
-    <None Remove="client\\" />
-    <EmbeddedResource Remove="client\\" />
+    <Compile Remove="client\**" />
+    <None Remove="client\**" />
+    <EmbeddedResource Remove="client\**" />
   </ItemGroup>
 
   <Target Name="ValidateSPTPath" BeforeTargets="BeforeBuild">

@@ -4,7 +4,7 @@
 
 There were two different builds both called 0.0.9, and the first one could not start a server. It asked the server for its insurance settings the way SPT 4.1 does; 4.0 supplies them by another route, so the server aborted with *"Unable to resolve service for type ... InsuranceConfig"* before the mod ever ran. Nothing touched your profile.
 
-That was fixed in place, which meant two archives shared a version number and nothing distinguished them. **0.0.91 exists to end that ambiguity.** If you are on any 0.0.9, take this one.
+That was fixed in place, which meant two archives shared a version number and nothing distinguished them. **0.0.92 exists to end that ambiguity.** If you are on any 0.0.9, take this one.
 
 ## What is in it
 
