@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>RealisticInsuranceClient</AssemblyName>
+    <RootNamespace>RealisticInsuranceClient</RootNamespace>
+    <Version>0.0.92</Version>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <SPTPath Condition="'$(SPTPath)' == ''">$(SPT_PATH)</SPTPath>
+    <SPTPath Condition="'$(SPTPath)' != ''">$(SPTPath.TrimEnd('\'))</SPTPath>
+    <SPTManagedPath>$(SPTPath)\EscapeFromTarkov_Data\Managed</SPTManagedPath>
+    <SPTBepInExPath>$(SPTPath)\BepInEx</SPTBepInExPath>
+  </PropertyGroup>
+
+  <Target Name="ValidateSPTPath" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(SPTPath)' == ''" Text="SPTPath is not set. e.g. -p:SPTPath=H:\SPT4.1.X" />
+    <Error Condition="!Exists('$(SPTManagedPath)\Assembly-CSharp.dll')" Text="SPTPath ('$(SPTPath)') is not an SPT install root." />
+  </Target>
+
+  <!--
+    spt-common comes from the install on purpose. SPT's PluginValidator reads a
+    plugin's references and requires a Major.Minor match, so this must be built
+    against a 4.0 install - a DLL built against 4.1's copies is refused.
+
+      dotnet build -c Release -p:SPTPath="H:\SPT2026"
+  -->
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(SPTBepInExPath)\core\BepInEx.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(SPTBepInExPath)\core\0Harmony.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="spt-common"><HintPath>$(SPTBepInExPath)\plugins\spt\spt-common.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(SPTManagedPath)\Assembly-CSharp.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Comfort"><HintPath>$(SPTManagedPath)\Comfort.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(SPTManagedPath)\UnityEngine.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(SPTManagedPath)\UnityEngine.CoreModule.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToSPT" AfterTargets="Build" Condition="'$(DeployToSPT)' == 'true'">
+    <MakeDir Directories="$(SPTBepInExPath)\plugins\RealisticInsurance" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SPTBepInExPath)\plugins\RealisticInsurance" />
+  </Target>
+</Project>

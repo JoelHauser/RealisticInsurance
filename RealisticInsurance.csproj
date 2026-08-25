@@ -79,6 +79,19 @@
     <Copy SourceFiles="config\config.json" DestinationFolder="$(ModStageDir)\config" />
     <Copy SourceFiles="README.md" DestinationFolder="$(ModStageDir)" />
     <Copy SourceFiles="LICENSE" DestinationFolder="$(ModStageDir)" />
+
+    <!--
+      The client plugin ships alongside the server mod. It reports which gear
+      was still on the body at death; without it nothing is ever marked as
+      dropped and the mod quietly behaves as it did before.
+    -->
+    <ItemGroup>
+      <ClientPlugin Include="client\bin\Release\RealisticInsuranceClient.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(StagingDir)\BepInEx\plugins\RealisticInsurance" Condition="'@(ClientPlugin)' != ''" />
+    <Copy SourceFiles="@(ClientPlugin)" DestinationFolder="$(StagingDir)\BepInEx\plugins\RealisticInsurance" Condition="'@(ClientPlugin)' != ''" />
+    <Warning Text="RealisticInsuranceClient.dll not found - build client first, or this archive is server-only." Condition="'@(ClientPlugin)' == ''" />
+
     <Delete Files="$(ZipPath)" />
     <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
     <RemoveDir Directories="$(StagingDir)" />

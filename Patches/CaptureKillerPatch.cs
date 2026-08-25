@@ -176,6 +176,11 @@ namespace RealisticInsurance.Patches
                 return;
             }
 
+            // What the client said was still on the body. Null when the player
+            // survived, or when the client plugin is not installed - in both
+            // cases nothing is marked as dropped and behaviour is unchanged.
+            var onCorpse = CorpseSnapshotStore.Take(sessionID);
+
             for (var i = __state; i < list.Count; i++)
             {
                 var package = list[i];
@@ -191,6 +196,22 @@ namespace RealisticInsurance.Patches
                 if (ctx.KillerLevel.HasValue)
                 {
                     package.ExtensionData[KillerContext.ExtKeyLevel] = ctx.KillerLevel.Value;
+                }
+
+                // Record only this package's dropped ids, not the whole corpse.
+                // The dropped set is normally small, and storing the inverse
+                // would put the player's entire kit into the profile.
+                if (onCorpse is not null && package.Items is not null)
+                {
+                    var dropped = package.Items
+                        .Where(item => item?.Id != null && !onCorpse.Contains(item.Id.ToString()))
+                        .Select(item => item.Id.ToString())
+                        .ToList();
+
+                    if (dropped.Count > 0)
+                    {
+                        package.ExtensionData[KillerContext.ExtKeyDropped] = dropped;
+                    }
                 }
             }
         }

@@ -70,6 +70,13 @@ namespace RealisticInsurance.Patches
     {
         [ThreadStatic] private static HashSet<MongoId>? _taken;
         [ThreadStatic] private static double _fallbackReturnChance;
+
+        /// <summary>
+        /// Ids the player dropped before dying. These are not judged by this mod
+        /// at all - they are handed back to SPT so the trader's own return chance
+        /// applies, which is what a player expects for gear no one looted.
+        /// </summary>
+        [ThreadStatic] private static HashSet<string>? _dropped;
         [ThreadStatic] private static bool _active;
         [ThreadStatic] private static bool _legacy;
 
@@ -77,6 +84,11 @@ namespace RealisticInsurance.Patches
         internal static bool Legacy => _legacy;
         internal static double FallbackReturnChance => _fallbackReturnChance;
         internal static bool HasPlan => _taken is not null;
+
+        internal static bool IsDropped(MongoId id)
+        {
+            return _dropped is not null && _dropped.Contains(id.ToString());
+        }
 
         internal static bool WasTaken(MongoId id)
         {
@@ -93,6 +105,7 @@ namespace RealisticInsurance.Patches
             // being destroyed. Previously this kept the last package's value, and a
             // stale 0 here deletes an entire package.
             _fallbackReturnChance = 100d;
+            _dropped = null;
         }
 
         internal static void Build(
@@ -187,8 +200,35 @@ namespace RealisticInsurance.Patches
                 fractionTaken *= 1d + randomUtil.GetDouble(-jitter, jitter);
             }
 
-            var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * items.Count);
-            _taken = SelectRoots(items, targetEntries, config.ValueWeightedLooting.GreedBias,
+            // Items the client reported as NOT on the body are not judged here at
+            // all. Recording the ids makes the per-item patch hand them straight
+            // back to SPT, so the trader's own return chance applies. A helmet
+            // dropped twenty minutes before death was never seen by the killer.
+            var droppedIds = ReadStringSet(ext, KillerContext.ExtKeyDropped);
+
+            var onCorpse = items;
+
+            if (droppedIds is not null && droppedIds.Count > 0)
+            {
+                // Partitioning by each item's own id is enough: a root and its
+                // children leave the inventory together, so they are either all
+                // in the dropped set or none of them are.
+                onCorpse = items.Where(i => !droppedIds.Contains(i.Id.ToString())).ToList();
+
+                _dropped = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var item in items.Where(i => droppedIds.Contains(i.Id.ToString())))
+                {
+                    _dropped.Add(item.Id.ToString());
+                }
+
+                if (config.LogRolls)
+                {
+                    logger.Info($"[RealisticInsurance]   {_dropped.Count} entr(ies) were dropped before death -> handed to SPT for the trader's own return chance, not judged by the killer");
+                }
+            }
+
+            var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * onCorpse.Count);
+            _taken = SelectRoots(onCorpse, targetEntries, config.ValueWeightedLooting.GreedBias,
                 priceService, randomUtil, out var rootsTaken, out var rootsTotal);
 
             if (config.LogRolls)
@@ -344,6 +384,45 @@ namespace RealisticInsurance.Patches
             return chosen;
         }
 
+        /// <summary>
+        /// Reads a stamped list of ids back out. It round-trips through the
+        /// profile as JSON, so by the time it returns it is a JsonElement array
+        /// rather than the List&lt;string&gt; that went in.
+        /// </summary>
+        private static HashSet<string>? ReadStringSet(IDictionary<string?, object?>? ext, string key)
+        {
+            if (ext is null || !ext.TryGetValue(key, out var raw) || raw is null)
+            {
+                return null;
+            }
+
+            var set = new HashSet<string>(StringComparer.Ordinal);
+
+            switch (raw)
+            {
+                case IEnumerable<string> strings:
+                    foreach (var v in strings) set.Add(v);
+                    break;
+                case System.Text.Json.JsonElement element
+                    when element.ValueKind == System.Text.Json.JsonValueKind.Array:
+                    foreach (var e in element.EnumerateArray())
+                    {
+                        var v = e.GetString();
+                        if (v is not null) set.Add(v);
+                    }
+                    break;
+                case System.Collections.IEnumerable loose:
+                    foreach (var o in loose)
+                    {
+                        var v = o?.ToString();
+                        if (!string.IsNullOrEmpty(v)) set.Add(v!);
+                    }
+                    break;
+            }
+
+            return set.Count > 0 ? set : null;
+        }
+
         private static double ReadDouble(IDictionary<string?, object?> ext, string key, double fallback)
         {
             if (!ext.TryGetValue(key, out var raw) || raw is null)
@@ -432,6 +511,23 @@ namespace RealisticInsurance.Patches
                 // Unknown (modded) trader: answer it ourselves rather than crash.
                 var fallbackChance = config?.BaseReturnChancePercent.Other ?? 90d;
                 __result = (_randomUtil.GetInt(0, 9999) / 100) >= fallbackChance;
+                return false;
+            }
+
+            // Dropped before death: SPT's flat trader chance, exactly as if this
+            // mod were not installed. Checked before the plan, because the plan
+            // deliberately holds no verdict for these.
+            if (insuredItem is not null && RaidLootPlan.IsDropped(insuredItem.Id))
+            {
+                if (SptCanHandle(traderId))
+                {
+                    return true;
+                }
+
+                // Modded trader SPT cannot price. Answer it here rather than let
+                // it throw, using the same "nobody looted it" rate.
+                var droppedChance = config?.BaseReturnChancePercent.Other ?? 90d;
+                __result = (_randomUtil.GetInt(0, 9999) / 100) >= droppedChance;
                 return false;
             }
 
