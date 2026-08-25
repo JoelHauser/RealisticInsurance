@@ -170,6 +170,32 @@ and took every last item. Both were observed in testing.
 **All insured gear is covered**, not just what was equipped. `RollForDelete` is
 reached from both the regular-item and attachment paths.
 
+
+### Gear you dropped before dying
+
+A helmet you stashed in a bush twenty minutes before you died was never seen by
+the PMC who killed you, so their greed has no business deciding whether it comes
+back. Anything you dropped is handed to SPT untouched and returns at the
+**trader's own flat rate**; only what was still on your body is judged by the
+killer.
+
+The server cannot work this out alone. `LostInsuredItems` is a flat list of
+`Item` carrying only `Id`, `Template`, `ParentId`, `SlotId`, `Location` and
+`Upd` - no world position, no timestamp - and `EndRaidResult` adds only the
+killer, the exit and a play time. Looted gear and dropped gear are the same
+thing from there. Stock SPT never meets the problem because it applies one
+number to everything.
+
+So a small **client plugin** ships alongside the server mod. When the player
+dies it posts the ids still in their inventory to `/realisticinsurance/corpse`;
+the raid-end handler subtracts that set from the lost package and stamps the
+remainder as `riDroppedIds`. No timestamps are needed - anything missing from
+the death snapshot left under the player's own control, whenever that was.
+
+The plugin is optional in the sense that nothing breaks without it: no snapshot
+means nothing is marked dropped, and the mod behaves as it did before. Both
+halves are in the release archive and extracting it installs both.
+
 ## Config
 
 `config/config.json`:
@@ -257,3 +283,14 @@ Add `-p:DeployToSPT=true` to copy straight into
 
 Compiled against the assemblies shipped in the install rather than the
 `SPTarkov.*` NuGet packages, which are still on 4.1.2.
+
+The client plugin is a separate project, targeting `net472` against the game's
+own assemblies:
+
+```
+cd client
+dotnet build -c Release -p:SPTPath="H:\SPT4.1.X"
+```
+
+Build it before `-t:PackageRelease`, or the archive ships server-only and the
+build warns you that it did.
