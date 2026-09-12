@@ -46,6 +46,12 @@
     "maxFractionTaken": 0.92
   },
 
+  "// traderMessages": "The mail the trader sends with a returned package. Instead of SPT's fixed line, the note says how much came back, who took the rest and whether they got out with it. Set enabled=false to keep the stock message.",
+  "traderMessages": {
+    "enabled": true,
+    "includeItemNames": true
+  },
+
   "// looterExtractedChancePercent": "Baseline chance the killer survived and extracted with your gear, before competence is applied.",
   "looterExtractedChancePercent": 65,
 

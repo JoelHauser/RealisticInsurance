@@ -116,6 +116,13 @@ namespace RealisticInsurance.Patches
         {
             Clear();
 
+            // Cleared here rather than inside Clear(): that also runs in the
+            // FindItemsToDelete postfix, which is well before the mail goes out,
+            // so clearing there would destroy the outcome before the mail patch
+            // could read it. Doing it at the start of each plan is what stops one
+            // package inheriting the previous package's story.
+            PackageOutcomeStore.Clear();
+
             var config = RealisticInsuranceMod.Config;
             if (config is null || !config.Enabled)
             {
@@ -190,6 +197,17 @@ namespace RealisticInsurance.Patches
             var items = insured.Items;
             if (!config.ValueWeightedLooting.Enabled || items is null || items.Count == 0)
             {
+                // The killer is still known even though the per-item verdicts are
+                // being left to probability, so the trader can still say who it
+                // was. Without this, switching value-weighted looting off would
+                // silently switch the messages off too.
+                PackageOutcomeStore.Set(new PackageOutcome
+                {
+                    Type = killerType,
+                    LooterExtracted = looterExtracted,
+                    EntriesTotal = items?.Count ?? 0
+                });
+
                 return; // fall back to a per-item probability roll
             }
 
@@ -218,13 +236,17 @@ namespace RealisticInsurance.Patches
 
             var rootsTaken = 0;
             var rootsTotal = 0;
+
+            // Each kit item's verdict and value, so the trader's note can name the
+            // one thing worth naming.
+            var rootSummary = new List<RootTake>();
             _taken = new HashSet<MongoId>();
 
             if (onCorpse.Count > 0)
             {
                 var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * onCorpse.Count);
                 var selectedOnCorpse = SelectRoots(onCorpse, targetEntries, config.ValueWeightedLooting.GreedBias,
-                    priceService, randomUtil, out var takenA, out var totalA);
+                    priceService, randomUtil, rootSummary, out var takenA, out var totalA);
                 foreach (var id in selectedOnCorpse)
                 {
                     _taken.Add(id);
@@ -252,6 +274,8 @@ namespace RealisticInsurance.Patches
                 }
             }
 
+            RecordOutcome(killerType, looterExtracted, items, rootSummary, dropped?.Count ?? 0, itemHelper);
+
             if (config.LogRolls)
             {
                 logger.Info(
@@ -266,6 +290,64 @@ namespace RealisticInsurance.Patches
                     logger.Info($"[RealisticInsurance]   {verdict} {itemHelper.GetItemName(item.Template)} ({price:N0} RUB)");
                 }
             }
+        }
+
+        /// <summary>
+        /// Hands the mail patch everything it needs to describe this package.
+        ///
+        /// Recorded now rather than read off the package later, because by the
+        /// time the mail is sent the taken items have already been removed from
+        /// it -- the only thing still knowable there is what survived.
+        /// </summary>
+        private static void RecordOutcome(
+            KillerType killerType,
+            bool looterExtracted,
+            List<Item> items,
+            List<RootTake> rootSummary,
+            int droppedCount,
+            ItemHelper itemHelper)
+        {
+            var outcome = new PackageOutcome
+            {
+                Type = killerType,
+                LooterExtracted = looterExtracted,
+                EntriesTotal = items.Count,
+                DroppedCount = droppedCount
+            };
+
+            Item? topLostRoot = null;
+            Item? topKeptRoot = null;
+            var topLostValue = -1d;
+            var topKeptValue = -1d;
+
+            foreach (var root in rootSummary)
+            {
+                // Value counts only what was on the body. Folding in gear the
+                // player dropped -- which no looter ever judged -- would make one
+                // who took everything they actually saw look restrained.
+                outcome.ValueOnCorpse += root.Value;
+
+                if (root.Taken)
+                {
+                    outcome.ValueLost += root.Value;
+
+                    if (root.Value > topLostValue)
+                    {
+                        topLostValue = root.Value;
+                        topLostRoot = root.Root;
+                    }
+                }
+                else if (root.Value > topKeptValue)
+                {
+                    topKeptValue = root.Value;
+                    topKeptRoot = root.Root;
+                }
+            }
+
+            outcome.TopLostName = topLostRoot is null ? null : itemHelper.GetItemName(topLostRoot.Template);
+            outcome.TopKeptName = topKeptRoot is null ? null : itemHelper.GetItemName(topKeptRoot.Template);
+
+            PackageOutcomeStore.Set(outcome);
         }
 
         /// <summary>
@@ -287,6 +369,7 @@ namespace RealisticInsurance.Patches
             double greedBias,
             RagfairPriceService priceService,
             RandomUtil randomUtil,
+            List<RootTake>? summary,
             out int rootsTaken,
             out int rootsTotal)
         {
@@ -352,7 +435,9 @@ namespace RealisticInsurance.Patches
                 => priceService.GetDynamicItemPrice(item.Template, Money.ROUBLES) ?? 0d;
 
             // A kitted weapon is worth its mods, so price each root as the whole object.
-            var pool = new List<(Item Root, List<Item> Group, double Weight)>(roots.Count);
+            // The raw value is carried alongside the weight because the trader's
+            // note needs "the most expensive thing they took", not a biased weight.
+            var pool = new List<(Item Root, List<Item> Group, double Value, double Weight)>(roots.Count);
             foreach (var root in roots)
             {
                 var group = new List<Item> { root };
@@ -364,7 +449,7 @@ namespace RealisticInsurance.Patches
                     value += PriceOf(member);
                 }
 
-                pool.Add((root, group, Math.Pow(Math.Max(value, 1d), greedBias)));
+                pool.Add((root, group, value, Math.Pow(Math.Max(value, 1d), greedBias)));
             }
 
             // Each kit item gets its OWN roll rather than a shared budget being spent
@@ -389,17 +474,19 @@ namespace RealisticInsurance.Patches
             foreach (var entry in pool)
             {
                 var chance = Math.Clamp(targetEntries * entry.Weight / weightedSize, 0d, 1d);
-                if (randomUtil.GetDouble(0d, 1d) >= chance)
+                var taken = randomUtil.GetDouble(0d, 1d) < chance;
+
+                if (taken)
                 {
-                    continue;
+                    foreach (var member in entry.Group)
+                    {
+                        chosen.Add(member.Id);
+                    }
+
+                    rootsTaken++;
                 }
 
-                foreach (var member in entry.Group)
-                {
-                    chosen.Add(member.Id);
-                }
-
-                rootsTaken++;
+                summary?.Add(new RootTake(entry.Root, entry.Value, taken));
             }
 
             return chosen;
