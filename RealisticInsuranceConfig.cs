@@ -19,6 +19,9 @@ namespace RealisticInsurance
         [JsonPropertyName("valueWeightedLooting")]
         public ValueWeightedLooting ValueWeightedLooting { get; set; } = new();
 
+        [JsonPropertyName("traderMessages")]
+        public TraderMessages TraderMessages { get; set; } = new();
+
         [JsonPropertyName("looterExtractedChancePercent")]
         public double LooterExtractedChancePercent { get; set; } = 65;
 
@@ -33,6 +36,26 @@ namespace RealisticInsurance
 
         [JsonPropertyName("logRolls")]
         public bool LogRolls { get; set; }
+    }
+
+    /// <summary>
+    /// The note the trader sends with a returned package.
+    ///
+    /// Vanilla mail is a locale template id, so it can only be one of a few
+    /// fixed strings and can never mention the looter. This mod knows who it
+    /// was, and the message is the only place the player ever finds out.
+    /// </summary>
+    internal class TraderMessages
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// Name the most valuable kit item lost (or kept). Off leaves the note
+        /// talking only about how much came back and who took the rest.
+        /// </summary>
+        [JsonPropertyName("includeItemNames")]
+        public bool IncludeItemNames { get; set; } = true;
     }
 
     internal class BaseReturnChances

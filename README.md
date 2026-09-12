@@ -198,6 +198,49 @@ The plugin is optional in the sense that nothing breaks without it: no snapshot
 means nothing is marked dropped, and the mod behaves as it did before. Both
 halves are in the release archive and extracting it installs both.
 
+### The trader tells you what happened
+
+All of the above was invisible. The mod worked out who killed you, how good they
+were and whether they got out with your kit — and then the player saw only that
+some items were missing, exactly as in vanilla.
+
+The insurance mail now says it:
+
+> Had someone out there before the dust settled. Most of it is here. They were in
+> a hurry. Your AK-105 isn't coming back.
+
+> My people went out to collect what they could. Only a small part of it was
+> still there. A scav with a real head on his shoulders cleaned you out and got
+> clear. Say goodbye to the Osprey.
+>
+> Whatever you dropped before you went down was still sitting there.
+
+Vanilla mail is a locale **template id** — the server names a fixed string and
+the client looks it up — so it can only ever be one of a handful of lines, and
+none of them can mention a looter, because vanilla has no looter to mention.
+`SendDirectNpcMessageToPlayer` takes literal text instead and stores it in the
+profile, so the note persists and reads back correctly forever after. The gear
+rides on the same message, so this is still **one** mail from the trader, not a
+note bolted onto the side of the real delivery.
+
+The note is assembled from four independent slots — an opener in the trader's
+voice, how much came back, who took the rest, and (70% of the time) the one item
+worth naming. Drawing each slot separately is what keeps it varied: whole
+canned messages would start repeating within an evening.
+
+Prapor and Therapist have their own voices. Modded traders that offer insurance
+get a neutral one rather than being put in Prapor's mouth.
+
+How much came back is judged **by value, not by item count** — losing a kitted
+rifle is not "thirteen of thirty-four entries", it is most of the raid. Both
+extremes are decided by what is actually in the mail instead, because SPT strips
+attachments off surviving weapons in a pass of its own after this mod's plan is
+made.
+
+The text is English only. That is the cost of bypassing the locale system, and
+the locale system is exactly what made the vanilla message unable to say
+anything.
+
 ## Config
 
 `config/config.json`:
@@ -221,6 +264,8 @@ halves are in the release archive and extracting it installs both.
 | `valueWeightedLooting.countJitter` | Random wobble on how many items were taken |
 | `valueWeightedLooting.minFractionTaken` | Floor, so no looter is ever perfectly disciplined — a chad still lifts a good plate to sell |
 | `valueWeightedLooting.maxFractionTaken` | Ceiling, so something always survives |
+| `traderMessages.enabled` | Rewrite the insurance mail to say what happened. `false` keeps SPT's stock message |
+| `traderMessages.includeItemNames` | Let the note name the most valuable item lost, or kept |
 | `looterExtractedChancePercent` | Baseline chance the killer extracted, before competence |
 | `looterDiedBonusPercent` | Added to the return chance when they did not extract |
 | `traderModifierPercent` | Optional per-trader adjustment, by trader ID |
@@ -248,7 +293,9 @@ halves are in the release archive and extracting it installs both.
   already chosen what was taken, so you correctly get nothing back - but the log
   will still show a plan that was then discarded. Do not use those maps to verify
   tuning. The gate is conditional: it only fires while the location's `Insurance`
-  flag is false.
+  flag is false. Those two maps also keep SPT's own failure message: nothing was
+  returned because the *map* forbids it, not because anyone looted you, and this
+  mod's note would be describing a looter who was never involved.
 - **Packages insured before installing** carry no killer data. By default they
   fall back to SPT's flat chance.
 - Insurance returns run on a timer (`runIntervalSeconds`, default 600s) and can

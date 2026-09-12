@@ -25,6 +25,7 @@ namespace RealisticInsurance
         StampPackagesPatch stampPackagesPatch,
         PackageContextPatch packageContextPatch,
         ReturnChancePatch returnChancePatch,
+        InsuranceMailPatch insuranceMailPatch,
         ISptLogger<RealisticInsuranceMod> logger) : IOnLoad
     {
         internal static RealisticInsuranceConfig? Config { get; private set; }
@@ -73,7 +74,8 @@ namespace RealisticInsurance
                 captureKillerPatch,
                 stampPackagesPatch,
                 packageContextPatch,
-                returnChancePatch
+                returnChancePatch,
+                insuranceMailPatch
             ]);
             patchManager.EnablePatches();
 
