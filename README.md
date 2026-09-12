@@ -8,7 +8,7 @@ Server mod for SPT 4.0.x (built and verified against 4.0.13).
 
 ## Status
 
-**0.0.92 — the 4.0.x backport, now at feature parity with the 4.1 line. Builds against 4.0.13, not yet run on a 4.0 server.**
+**0.0.93 — the 4.0.x backport, at feature parity with the 4.1 line (0.2.1). Builds against 4.0.13, not yet run on a 4.0 server.**
 
 The full pipeline has been observed end to end on a live **4.1** server: the
 raid-end capture, killer classification, the PMC level lookup, persistence of
