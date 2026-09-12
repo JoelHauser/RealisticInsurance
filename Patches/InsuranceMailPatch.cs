@@ -112,7 +112,7 @@ namespace RealisticInsurance.Patches
         /// lie -- hand those back to SPT untouched.
         ///
         /// This mirrors InsuranceController.IsMapLabsAndInsuranceDisabled and
-        /// its Labyrinth twin, both private. Duplicating two lines is cheaper
+        /// its Labyrinth twin, both non-public. Duplicating two lines is cheaper
         /// than reflecting into them, but it does mean a new no-insurance map
         /// would need adding here too.
         /// </summary>
