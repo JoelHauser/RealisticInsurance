@@ -114,6 +114,7 @@ namespace RealisticInsurance.Patches
                 KillerLevel = killerLevel,
                 Competence = competence,
                 Wildcard = wildcard,
+                PlayerDied = isDead,
                 LooterExtracted = _randomUtil.GetChance100(extractChance)
             };
 
@@ -177,10 +178,15 @@ namespace RealisticInsurance.Patches
                 return;
             }
 
-            // What the client said was still on the body. Null when the player
-            // survived, or when the client plugin is not installed - in both
-            // cases nothing is marked as dropped and behaviour is unchanged.
+            // What the client said was still on the body. Null when the client
+            // plugin is not installed - nothing is marked as dropped and behaviour
+            // is unchanged. A survivor has no corpse, so everything they lost was
+            // dropped by them and goes back to SPT at the trader's own rate.
             var onCorpse = CorpseSnapshotStore.Take(sessionID);
+            if (!ctx.PlayerDied)
+            {
+                onCorpse = [];
+            }
 
             for (var i = __state; i < list.Count; i++)
             {
