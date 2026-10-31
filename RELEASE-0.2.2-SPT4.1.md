@@ -14,4 +14,4 @@
 2. Extract the archive into your SPT folder.
 3. Start the server.
 
-Your `config.json` has no new settings. The client plugin is unchanged and still reports 0.2.0.
+Your `config.json` has no new settings. Install both halves: the client plugin now reports 0.2.2.
