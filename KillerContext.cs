@@ -22,8 +22,12 @@ namespace RealisticInsurance
         /// <summary>True when this raid's competence ignored level entirely.</summary>
         public bool Wildcard { get; set; }
 
-        /// <summary>False when the player survived, so everything they lost was dropped by them.</summary>
-        public bool PlayerDied { get; set; }
+        /// <summary>
+        /// Ids the client reported still on the body at death. Empty when the
+        /// player survived, so everything they lost counts as dropped; null when
+        /// the client plugin sent nothing.
+        /// </summary>
+        public HashSet<string>? OnCorpse { get; set; }
 
         // Stamped into Insurance.ExtensionData so it persists in profile.json.
         public const string ExtKeyType = "riKillerType";

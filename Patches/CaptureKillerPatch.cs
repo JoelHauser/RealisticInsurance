@@ -1,11 +1,9 @@
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Reflection;
 using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Models.Common;
-using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Match;
 using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services.Bot;
@@ -108,13 +106,19 @@ namespace RealisticInsurance.Patches
                 config.LooterExtractedChancePercent + (competence - 50d) * comp.ExtractPerCompetencePoint,
                 0d, 100d);
 
+            // Taken at every raid end, not only when a package gets made: a raid
+            // that loses no insured gear never reaches the stamping patch, and a
+            // snapshot left behind would be read against the next raid instead.
+            // A survivor has no corpse, so everything they lost was dropped.
+            var snapshot = CorpseSnapshotStore.Take(sessionId);
+
             var ctx = new KillerContext
             {
                 Type = killerType,
                 KillerLevel = killerLevel,
                 Competence = competence,
                 Wildcard = wildcard,
-                PlayerDied = isDead,
+                OnCorpse = isDead ? snapshot : [],
                 LooterExtracted = _randomUtil.GetChance100(extractChance)
             };
 
@@ -178,15 +182,9 @@ namespace RealisticInsurance.Patches
                 return;
             }
 
-            // What the client said was still on the body. Null when the client
-            // plugin is not installed - nothing is marked as dropped and behaviour
-            // is unchanged. A survivor has no corpse, so everything they lost was
-            // dropped by them and goes back to SPT at the trader's own rate.
-            var onCorpse = CorpseSnapshotStore.Take(sessionID);
-            if (!ctx.PlayerDied)
-            {
-                onCorpse = [];
-            }
+            // Null when the client plugin is not installed - nothing is marked as
+            // dropped and behaviour is unchanged.
+            var onCorpse = ctx.OnCorpse;
 
             for (var i = __state; i < list.Count; i++)
             {

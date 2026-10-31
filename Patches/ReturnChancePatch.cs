@@ -76,6 +76,13 @@ namespace RealisticInsurance.Patches
         /// applies, which is what a player expects for gear no one looted.
         /// </summary>
         [ThreadStatic] private static HashSet<string>? _dropped;
+
+        /// <summary>
+        /// Nothing in the package was on the body - the player survived, or
+        /// dropped everything first. SPT's attachment pass rolls without naming
+        /// an item, so it can only be routed to the trader's rate by this flag.
+        /// </summary>
+        [ThreadStatic] private static bool _allDropped;
         [ThreadStatic] private static bool _active;
         [ThreadStatic] private static bool _legacy;
 
@@ -84,9 +91,10 @@ namespace RealisticInsurance.Patches
         internal static double FallbackReturnChance => _fallbackReturnChance;
         internal static bool HasPlan => _taken is not null;
 
-        internal static bool IsDropped(MongoId id)
+        internal static bool IsDropped(Item? item)
         {
-            return _dropped is not null && _dropped.Contains(id.ToString());
+            return _allDropped
+                || (item is not null && _dropped is not null && _dropped.Contains(item.Id.ToString()));
         }
 
         internal static bool WasTaken(MongoId id)
@@ -105,6 +113,7 @@ namespace RealisticInsurance.Patches
             // stale 0 here deletes an entire package.
             _fallbackReturnChance = 100d;
             _dropped = null;
+            _allDropped = false;
         }
 
         internal static void Build(
@@ -195,6 +204,38 @@ namespace RealisticInsurance.Patches
             _fallbackReturnChance = (1d - fractionTaken) * 100d;
 
             var items = insured.Items;
+
+            // Items the client reported as NOT on the body are not judged here at
+            // all. Recording the ids makes the per-item patch hand them straight
+            // back to SPT, so the trader's own return chance applies. A helmet
+            // dropped twenty minutes before death was never seen by the killer.
+            // Read before the value-weighted switch, which must not undo this.
+            var droppedIds = ReadStringSet(ext, KillerContext.ExtKeyDropped);
+            var onCorpse = items ?? new List<Item>();
+
+            if (items is not null && droppedIds is not null)
+            {
+                // Partitioning by each item's own id is enough: a root and its
+                // children leave the inventory together, so they are either all
+                // in the dropped set or none of them are.
+                onCorpse = items.Where(i => !droppedIds.Contains(i.Id.ToString())).ToList();
+
+                _dropped = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var item in items.Where(i => droppedIds.Contains(i.Id.ToString())))
+                {
+                    _dropped.Add(item.Id.ToString());
+                }
+
+                _allDropped = _dropped.Count > 0 && onCorpse.Count == 0;
+
+                if (config.LogRolls)
+                {
+                    logger.Info($"[RealisticInsurance]   {_dropped.Count} entr(ies) were not on the body -> handed to SPT for the trader's own return chance, not judged by the killer");
+                }
+            }
+
+            var droppedCount = _dropped?.Count ?? 0;
+
             if (!config.ValueWeightedLooting.Enabled || items is null || items.Count == 0)
             {
                 // The killer is still known even though the per-item verdicts are
@@ -205,7 +246,8 @@ namespace RealisticInsurance.Patches
                 {
                     Type = killerType,
                     LooterExtracted = looterExtracted,
-                    EntriesTotal = items?.Count ?? 0
+                    EntriesTotal = items?.Count ?? 0,
+                    DroppedCount = droppedCount
                 });
 
                 return; // fall back to a per-item probability roll
@@ -217,64 +259,15 @@ namespace RealisticInsurance.Patches
                 fractionTaken *= 1d + randomUtil.GetDouble(-jitter, jitter);
             }
 
-            // Items the client reported as NOT on the body get judged separately.
-            // A helmet dropped twenty minutes before death was never seen by the
-            // killer, so their greed and competence should not touch it.
-            var droppedIds = ReadStringSet(ext, KillerContext.ExtKeyDropped);
-
-            var onCorpse = items;
-            List<Item>? dropped = null;
-
-            if (droppedIds is not null && droppedIds.Count > 0)
-            {
-                // Partitioning by each item's own id is enough: a root and its
-                // children leave the inventory together, so they are either all
-                // in the dropped set or none of them are.
-                onCorpse = items.Where(i => !droppedIds.Contains(i.Id.ToString())).ToList();
-                dropped = items.Where(i => droppedIds.Contains(i.Id.ToString())).ToList();
-            }
-
-            var rootsTaken = 0;
-            var rootsTotal = 0;
-
             // Each kit item's verdict and value, so the trader's note can name the
             // one thing worth naming.
             var rootSummary = new List<RootTake>();
-            _taken = new HashSet<MongoId>();
 
-            if (onCorpse.Count > 0)
-            {
-                var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * onCorpse.Count);
-                var selectedOnCorpse = SelectRoots(onCorpse, targetEntries, config.ValueWeightedLooting.GreedBias,
-                    priceService, randomUtil, rootSummary, out var takenA, out var totalA);
-                foreach (var id in selectedOnCorpse)
-                {
-                    _taken.Add(id);
-                }
-                rootsTaken += takenA;
-                rootsTotal += totalA;
-            }
+            var targetEntries = (int)Math.Round(Math.Clamp(fractionTaken, 0d, 1d) * onCorpse.Count);
+            _taken = SelectRoots(onCorpse, targetEntries, config.ValueWeightedLooting.GreedBias,
+                priceService, randomUtil, rootSummary, out var rootsTaken, out var rootsTotal);
 
-            if (dropped is { Count: > 0 })
-            {
-                // Not judged here at all. Recording the ids makes the per-item
-                // patch hand these straight back to SPT, so the trader's own
-                // return chance applies - 85% at Prapor, 95% at Therapist. The
-                // killer never saw them, so none of this mod's reasoning about
-                // who they were or how greedy they felt should touch them.
-                _dropped = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var item in dropped)
-                {
-                    _dropped.Add(item.Id.ToString());
-                }
-
-                if (config.LogRolls)
-                {
-                    logger.Info($"[RealisticInsurance]   {dropped.Count} entr(ies) were dropped before death -> handed to SPT for the trader's own return chance, not judged by the killer");
-                }
-            }
-
-            RecordOutcome(killerType, looterExtracted, items, rootSummary, dropped?.Count ?? 0, itemHelper);
+            RecordOutcome(killerType, looterExtracted, items, rootSummary, droppedCount, itemHelper);
 
             if (config.LogRolls)
             {
@@ -579,10 +572,9 @@ namespace RealisticInsurance.Patches
         }
 
         /// <summary>
-        /// SPT indexes insuranceConfig.ReturnChancePercent[traderId] directly, having
-        /// only guarded that the trader exists in the trader table. A modded trader
-        /// that offers insurance without registering itself in insurance.json throws
-        /// KeyNotFoundException there. Never hand such a trader back to SPT.
+        /// A modded trader that offers insurance without registering itself in
+        /// insurance.json has no return chance in SPT, which then logs a warning
+        /// for every item and guesses 75%. Never hand such a trader back to SPT.
         /// </summary>
         private static bool SptCanHandle(MongoId traderId)
         {
@@ -604,34 +596,20 @@ namespace RealisticInsurance.Patches
             var deferToSpt = config is null || !config.Enabled || !RaidLootPlan.Active
                 || (RaidLootPlan.Legacy && config.LegacyPackageBehaviour.Equals("spt", StringComparison.OrdinalIgnoreCase));
 
-            if (deferToSpt)
+            // Gear that was not on the body gets SPT's flat trader chance, exactly
+            // as if this mod were not installed. Checked before the plan, because
+            // the plan deliberately holds no verdict for it.
+            if (deferToSpt || RaidLootPlan.IsDropped(insuredItem))
             {
-                // Only if SPT can actually price this trader; otherwise it would throw.
                 if (SptCanHandle(traderId))
                 {
                     return true;
                 }
 
-                // Unknown (modded) trader: answer it ourselves rather than crash.
+                // A modded trader SPT has no rate for: answer it here, using the
+                // "nobody looted it" rate.
                 var fallbackChance = config?.BaseReturnChancePercent.Other ?? 90d;
                 __result = (_randomUtil.GetInt(0, 9999) / 100) >= fallbackChance;
-                return false;
-            }
-
-            // Dropped before death: SPT's flat trader chance, exactly as if this
-            // mod were not installed. Checked before the plan, because the plan
-            // deliberately holds no verdict for these.
-            if (insuredItem is not null && RaidLootPlan.IsDropped(insuredItem.Id))
-            {
-                if (SptCanHandle(traderId))
-                {
-                    return true;
-                }
-
-                // Modded trader SPT cannot price. Answer it here rather than let
-                // it throw, using the same "nobody looted it" rate.
-                var droppedChance = config?.BaseReturnChancePercent.Other ?? 90d;
-                __result = (_randomUtil.GetInt(0, 9999) / 100) >= droppedChance;
                 return false;
             }
 

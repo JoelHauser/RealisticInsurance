@@ -192,8 +192,12 @@ the raid-end handler subtracts that set from the lost package and stamps the
 remainder as `riDroppedIds`. No timestamps are needed - anything missing from
 the death snapshot left under the player's own control, whenever that was.
 
+If you **survive** the raid there is no corpse, so everything you lost counts
+as dropped and comes back at the trader's own rate. That needs no snapshot.
+
 The plugin is optional in the sense that nothing breaks without it: no snapshot
-means nothing is marked dropped, and the mod behaves as it did before. Both
+means nothing is marked dropped after a death, and the mod behaves as it did
+before. Both
 halves are in the release archive and extracting it installs both.
 
 ### The trader tells you what happened
@@ -272,9 +276,8 @@ anything.
 
 ## Edge cases
 
-- **No aggressor** (environmental damage, bleeding out, falling, disconnect,
-  MIA, or surviving but leaving gear behind) falls into the `other` bucket.
-  Keep it high — nobody looted you.
+- **No aggressor** (environmental damage, bleeding out, falling, disconnect or
+  MIA) falls into the `other` bucket. Keep it high — nobody looted you.
 - **Bosses, guards and cultists** get their own bucket rather than being lumped
   in with scavs.
 - **`simulateItemsBeingTaken: false`** in `insurance.json` makes SPT skip the

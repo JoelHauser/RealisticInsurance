@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>RealisticInsurance</AssemblyName>
     <RootNamespace>RealisticInsurance</RootNamespace>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <DeployToSPT Condition="'$(DeployToSPT)' == ''">false</DeployToSPT>
   </PropertyGroup>
@@ -81,9 +81,8 @@
     <RemoveDir Directories="$(StagingDir)" />
     <MakeDir Directories="$(ModStageDir)\config" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModStageDir)" />
+    <!-- Runtime files only: a README or LICENSE would land loose in the player's install. -->
     <Copy SourceFiles="config\config.json" DestinationFolder="$(ModStageDir)\config" />
-    <Copy SourceFiles="README.md" DestinationFolder="$(ModStageDir)" />
-    <Copy SourceFiles="LICENSE" DestinationFolder="$(ModStageDir)" />
 
     <!--
       The client plugin ships alongside the server mod. It reports which gear

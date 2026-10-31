@@ -38,8 +38,8 @@ namespace RealisticInsurance
             }
 
             // A modded trader that offers insurance but never registers itself in
-            // insurance.json makes vanilla SPT throw. This mod handles those traders
-            // itself, but the user should still know they are misconfigured.
+            // insurance.json has no return chance in vanilla SPT. This mod handles
+            // those traders itself, but the user should still know.
             var registered = insuranceConfig.ReturnChancePercent?.Keys.ToHashSet() ?? new();
             foreach (var (traderId, trader) in tradersTable)
             {
@@ -48,7 +48,7 @@ namespace RealisticInsurance
                     continue;
                 }
 
-                logger.Warning($"[RealisticInsurance] trader '{trader.Base.Nickname}' ({traderId}) offers insurance but is not listed in insurance.json returnChancePercent. Vanilla SPT would throw on it; this mod will use the '{Config.BaseReturnChancePercent.Other}%' fallback instead.");
+                logger.Warning($"[RealisticInsurance] trader '{trader.Base.Nickname}' ({traderId}) offers insurance but is not listed in insurance.json returnChancePercent. Vanilla SPT would warn on every item and guess 75%; this mod will use the '{Config.BaseReturnChancePercent.Other}%' fallback instead.");
             }
 
             foreach (var patch in patches)

@@ -317,9 +317,10 @@ namespace RealisticInsurance
             var text = string.Join(" ", parts);
 
             // On its own line: it is an aside about different gear, not part of
-            // the story about the looter. Skipped when everything was dropped,
-            // e.g. after surviving, as there is no other gear to set it apart from.
-            if (outcome.DroppedCount > 0 && outcome.DroppedCount < outcome.EntriesTotal)
+            // the story about the looter. Skipped when there was no killer (which
+            // includes every survivor): the cause line already says nobody touched
+            // it, and "before you went down" would be wrong.
+            if (outcome.DroppedCount > 0 && outcome.Type != KillerType.Other)
             {
                 text += "\n" + Pick(Dropped, randomUtil);
             }
