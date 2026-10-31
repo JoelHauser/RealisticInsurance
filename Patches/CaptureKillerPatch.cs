@@ -107,12 +107,19 @@ namespace RealisticInsurance.Patches
                 config.LooterExtractedChancePercent + (competence - 50d) * comp.ExtractPerCompetencePoint,
                 0d, 100d);
 
+            // Taken at every raid end, not only when a package gets made: a raid
+            // that loses no insured gear never reaches the stamping patch, and a
+            // snapshot left behind would be read against the next raid instead.
+            // A survivor has no corpse, so everything they lost was dropped.
+            var snapshot = CorpseSnapshotStore.Take(sessionId);
+
             var ctx = new KillerContext
             {
                 Type = killerType,
                 KillerLevel = killerLevel,
                 Competence = competence,
                 Wildcard = wildcard,
+                OnCorpse = isDead ? snapshot : [],
                 LooterExtracted = _randomUtil.GetChance100(extractChance)
             };
 
@@ -176,10 +183,9 @@ namespace RealisticInsurance.Patches
                 return;
             }
 
-            // What the client said was still on the body. Null when the player
-            // survived, or when the client plugin is not installed - in both
-            // cases nothing is marked as dropped and behaviour is unchanged.
-            var onCorpse = CorpseSnapshotStore.Take(sessionID);
+            // Null when the client plugin is not installed - nothing is marked as
+            // dropped and behaviour is unchanged.
+            var onCorpse = ctx.OnCorpse;
 
             for (var i = __state; i < list.Count; i++)
             {

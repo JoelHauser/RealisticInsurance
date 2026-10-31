@@ -16,7 +16,7 @@ Level plays into it too, loosely: a level 45 can still be worse than a level 10.
 
 **Valuable gear goes first.** In one test raid a boss walked off with a kitted SCAR-H and a plated Osprey, and left an SKS and a helmet behind.
 
-**Gear you dropped is safe.** A helmet you stashed in a bush twenty minutes before you died was never seen by whoever killed you, so it returns at your trader's normal rate instead.
+**Gear you dropped is safe.** A helmet you stashed in a bush twenty minutes before you died was never seen by whoever killed you, so it returns at your trader's normal rate instead. If you survive, everything you lost was dropped, so all of it returns at that rate.
 
 ## Details {.tabset}
 
