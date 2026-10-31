@@ -22,6 +22,9 @@ namespace RealisticInsurance
         /// <summary>True when this raid's competence ignored level entirely.</summary>
         public bool Wildcard { get; set; }
 
+        /// <summary>False when the player survived, so everything they lost was dropped by them.</summary>
+        public bool PlayerDied { get; set; }
+
         // Stamped into Insurance.ExtensionData so it persists in profile.json.
         public const string ExtKeyType = "riKillerType";
         public const string ExtKeyExtracted = "riLooterExtracted";
