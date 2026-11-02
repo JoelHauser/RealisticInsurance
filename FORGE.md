@@ -12,6 +12,8 @@ SPT gives every insured item the same fixed chance of coming back, no matter wha
 
 Level plays into it too, loosely: a level 45 can still be worse than a level 10.
 
+**Dying late helps.** Get killed in the last few minutes of a raid and your killer has little time to loot you and reach an exit, so they get out with your gear less often.
+
 **Your kit stays together.** A rifle and its optic and suppressor are one item, and so are a rig and the plates in it. You lose the weapon *built*, or you get it back *built* — never a pile of orphaned mounts.
 
 **Valuable gear goes first.** In one test raid a boss walked off with a kitted SCAR-H and a plated Osprey, and left an SKS and a helmet behind.
@@ -39,6 +41,7 @@ Everything lives in `config/config.json`. The defaults are tuned — you do not 
 | Setting | Effect |
 |---|---|
 | `baseReturnChancePercent` | The headline numbers in the table above |
+| `timeRemaining` | How much a late death hurts the killer's chance to get out |
 | `traderModifierPercent` | Per-trader nudge, e.g. `+10` for Therapist |
 | `greed.perCompetencePoint` | How much a looter's skill changes what they take |
 | `valueWeightedLooting.greedBias` | How strongly they favour expensive gear |

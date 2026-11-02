@@ -52,6 +52,13 @@
     "includeItemNames": true
   },
 
+  "// timeRemaining": "Dying late leaves the killer little time to loot and get out. In the last windowMinutes of the raid their extract chance falls, by up to maxExtractPenaltyPercent when time runs out.",
+  "timeRemaining": {
+    "enabled": true,
+    "windowMinutes": 10,
+    "maxExtractPenaltyPercent": 50
+  },
+
   "// looterExtractedChancePercent": "Baseline chance the killer survived and extracted with your gear, before competence is applied.",
   "looterExtractedChancePercent": 65,
 
