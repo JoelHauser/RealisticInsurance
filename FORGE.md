@@ -24,7 +24,7 @@ Level plays into it too, loosely: a level 45 can still be worse than a level 10.
 
 ### Installing
 
-Two downloads: **0.2.0** for SPT 4.1.x, **0.0.92** for SPT 4.0.x. They are not interchangeable.
+Two downloads: **0.2.3** for SPT 4.1.x, **0.0.95** for SPT 4.0.x. They are not interchangeable.
 
 1. Stop the server.
 2. Extract the archive into your SPT folder.
