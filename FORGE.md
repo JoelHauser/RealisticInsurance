@@ -26,7 +26,7 @@ A PMC's level hints at how good they are, but only loosely. A level 45 can still
 
 ### Installing
 
-Pick the download for your SPT version: **0.2.2** for SPT 4.1.x, **0.0.94** for SPT 4.0.x. They are not interchangeable.
+Pick the download for your SPT version: **0.2.3** for SPT 4.1.x, **0.0.95** for SPT 4.0.x. They are not interchangeable.
 
 1. Stop the server.
 2. Extract the archive into your SPT folder.
