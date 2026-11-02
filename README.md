@@ -133,6 +133,18 @@ extractChance += (competence - 50) * extractPerCompetencePoint
 
 and shifts how much they took, signed per killer, as described above.
 
+**Dying late makes the killer less likely to get out.** Someone who kills you
+in the last minute has no time to loot your body and reach an extract. Inside
+the last `timeRemaining.windowMinutes` of the raid the extract chance drops
+linearly, reaching the full penalty when the clock hits zero:
+
+```
+extractChance -= maxExtractPenaltyPercent * clamp(1 - minutesLeft / windowMinutes, 0, 1)
+```
+
+Minutes left is the map's `EscapeTimeLimit` minus the raid's `PlayTime`. SPT
+only shortens scav raids, so a PMC raid always runs the map's full length.
+
 **Level is only available for PMC killers.** SPT caches `pmcUSEC`/`pmcBEAR`
 bots (and only those) in `MatchBotDetailsCacheService`; the post-raid Aggressor
 block carries no level at all. Scavs, bosses and unknown killers use the
@@ -268,6 +280,8 @@ anything.
 | `valueWeightedLooting.maxFractionTaken` | Ceiling, so something always survives |
 | `traderMessages.enabled` | Rewrite the insurance mail to say what happened. `false` keeps SPT's stock message |
 | `traderMessages.includeItemNames` | Let the note name the most valuable item lost, or kept |
+| `timeRemaining.windowMinutes` | How close to raid end a death has to be before the killer's extract chance starts dropping |
+| `timeRemaining.maxExtractPenaltyPercent` | Extract % taken off when you die with no time left. `timeRemaining.enabled: false` turns it off |
 | `looterExtractedChancePercent` | Baseline chance the killer extracted, before competence |
 | `looterDiedBonusPercent` | Added to the return chance when they did not extract |
 | `traderModifierPercent` | Optional per-trader adjustment, by trader ID |

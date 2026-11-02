@@ -5,6 +5,7 @@ using SPTarkov.DI.Annotations;
 using SPTarkov.Reflection.Patching;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Match;
+using SPTarkov.Server.Core.Models.Spt.Tables;
 using SPTarkov.Server.Core.Servers;
 using SPTarkov.Server.Core.Services.Bot;
 using SPTarkov.Server.Core.Services.InRaid;
@@ -33,6 +34,7 @@ namespace RealisticInsurance.Patches
     {
         private static MatchBotDetailsCacheService _botCache = null!;
         private static RandomUtil _randomUtil = null!;
+        private static LocationTable _locationTable = null!;
         private static ISptLogger<CaptureKillerPatch> _logger = null!;
 
         internal static readonly ConcurrentDictionary<string, KillerContext> Pending = new();
@@ -40,10 +42,12 @@ namespace RealisticInsurance.Patches
         public CaptureKillerPatch(
             MatchBotDetailsCacheService botCache,
             RandomUtil randomUtil,
+            LocationTable locationTable,
             ISptLogger<CaptureKillerPatch> logger)
         {
             _botCache = botCache;
             _randomUtil = randomUtil;
+            _locationTable = locationTable;
             _logger = logger;
         }
 
@@ -54,7 +58,7 @@ namespace RealisticInsurance.Patches
         }
 
         [PatchPrefix]
-        public static void Prefix(MongoId sessionId, bool isDead, EndLocalRaidRequestData request)
+        public static void Prefix(MongoId sessionId, bool isDead, EndLocalRaidRequestData request, string locationName)
         {
             var config = RealisticInsuranceMod.Config;
             if (config is null || !config.Enabled)
@@ -106,6 +110,11 @@ namespace RealisticInsurance.Patches
                 config.LooterExtractedChancePercent + (competence - 50d) * comp.ExtractPerCompetencePoint,
                 0d, 100d);
 
+            // A late death leaves the killer little time to loot and get out.
+            var minutesLeft = isDead ? MinutesLeft(request, locationName) : null;
+            var timePenalty = minutesLeft.HasValue ? config.TimeRemaining.PenaltyFor(minutesLeft.Value) : 0d;
+            extractChance = Math.Clamp(extractChance - timePenalty, 0d, 100d);
+
             // Taken at every raid end, not only when a package gets made: a raid
             // that loses no insured gear never reaches the stamping patch, and a
             // snapshot left behind would be read against the next raid instead.
@@ -131,8 +140,30 @@ namespace RealisticInsurance.Patches
                 var lostCount = request?.LostInsuredItems?.Count() ?? -1;
                 _logger.Info($"[RealisticInsurance] raid end diag: isDead={isDead}, exit={request?.Results?.Result}, lostInsuredItems={lostCount} (0 or -1 means SPT will NOT create an insurance package)");
 
-                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, competence={competence:0.#}{(wildcard ? " (WILDCARD)" : "")}, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
+                _logger.Info($"[RealisticInsurance] raid end: killer={killerType}, level={(killerLevel?.ToString() ?? "unknown")}, competence={competence:0.#}{(wildcard ? " (WILDCARD)" : "")}, minutesLeft={(minutesLeft?.ToString("0.#") ?? "unknown")}, timePenalty={timePenalty:0.#}%, extractChance={extractChance:0.#}% -> extracted={ctx.LooterExtracted}");
             }
+        }
+
+        /// <summary>
+        /// Raid minutes left when the player died, or null when it cannot be told.
+        /// A PMC raid always runs the map's full EscapeTimeLimit (SPT only shortens
+        /// scav raids), and PlayTime is seconds since the raid began.
+        /// </summary>
+        private static double? MinutesLeft(EndLocalRaidRequestData? request, string? locationName)
+        {
+            var playSeconds = request?.Results?.PlayTime;
+            if (playSeconds is null || string.IsNullOrEmpty(locationName))
+            {
+                return null;
+            }
+
+            var raidMinutes = _locationTable.GetLocation(locationName)?.Base?.EscapeTimeLimit;
+            if (raidMinutes is null or <= 0d)
+            {
+                return null;
+            }
+
+            return Math.Max(raidMinutes.Value - playSeconds.Value / 60d, 0d);
         }
     }
 

@@ -22,6 +22,9 @@ namespace RealisticInsurance
         [JsonPropertyName("traderMessages")]
         public TraderMessages TraderMessages { get; set; } = new();
 
+        [JsonPropertyName("timeRemaining")]
+        public TimeRemaining TimeRemaining { get; set; } = new();
+
         [JsonPropertyName("looterExtractedChancePercent")]
         public double LooterExtractedChancePercent { get; set; } = 65;
 
@@ -56,6 +59,36 @@ namespace RealisticInsurance
         /// </summary>
         [JsonPropertyName("includeItemNames")]
         public bool IncludeItemNames { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Dying late leaves the killer little time to loot and get out. Inside the
+    /// last windowMinutes of the raid the extract chance drops linearly, reaching
+    /// the full penalty as the clock hits zero: a killer still on your body when
+    /// time runs out dies in the raid with it.
+    /// </summary>
+    internal class TimeRemaining
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Minutes before raid end where the penalty starts.</summary>
+        [JsonPropertyName("windowMinutes")]
+        public double WindowMinutes { get; set; } = 10;
+
+        /// <summary>Extract % removed when the player dies with no time left.</summary>
+        [JsonPropertyName("maxExtractPenaltyPercent")]
+        public double MaxExtractPenaltyPercent { get; set; } = 50;
+
+        public double PenaltyFor(double minutesLeft)
+        {
+            if (!Enabled || WindowMinutes <= 0d)
+            {
+                return 0d;
+            }
+
+            return MaxExtractPenaltyPercent * Math.Clamp(1d - minutesLeft / WindowMinutes, 0d, 1d);
+        }
     }
 
     internal class BaseReturnChances

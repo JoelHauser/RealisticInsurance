@@ -5,7 +5,7 @@ In SPT, every insured item has the same fixed chance of coming back, no matter h
 When you die, the mod works through three questions:
 
 1. **Who killed you?** Each kind of killer starts from a different return chance.
-2. **Did they get out?** A killer who dies before extracting takes nothing home, so more of your kit comes back. Better killers extract more often.
+2. **Did they get out?** A killer who dies before extracting takes nothing home, so more of your kit comes back. Better killers extract more often. Die in the last few minutes of a raid and your killer has little time to loot you and reach an exit, so they get out less often.
 3. **What did they take?** Valuable gear goes first, and it goes whole. A rifle with its optic and suppressor is one item, and so is a rig with its plates. You get the weapon back built, or not at all.
 
 | Killed by | Starting return chance | How they loot |
@@ -44,6 +44,7 @@ Everything lives in `config/config.json` in the mod's folder. The defaults are t
 |---|---|
 | `enabled` | `false` turns the mod off without uninstalling it |
 | `baseReturnChancePercent` | The starting return chances in the table above |
+| `timeRemaining` | How much a late death hurts the killer's chance to get out |
 | `traderModifierPercent` | Per-trader nudge, e.g. `10` for Therapist |
 | `greed.perCompetencePoint` | How much a killer's skill changes what they take |
 | `valueWeightedLooting.greedBias` | How strongly killers go for expensive gear |
